@@ -134,6 +134,7 @@ set_global_assignment -name DEVICE_FILTER_PACKAGE TQFP
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 144
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
 set_global_assignment -name SAVE_DISK_SPACE OFF
+set_global_assignment -name PRE_FLOW_SCRIPT_FILE "quartus_sh:build_id.tcl"
 
 # Fitter Assignments
 # ==================
@@ -344,6 +345,7 @@ set_location_assignment PLL_1 -to pll|altpll_component|auto_generated|pll1
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to UART_TX
 
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to UART_RX
+set_global_assignment -name VHDL_FILE build_id.vhd
 set_global_assignment -name VHDL_FILE rtl/tap_fifo.vhd
 set_global_assignment -name VHDL_FILE rtl/c1530.vhd
 set_global_assignment -name VERILOG_FILE rtl/sid8580/sid_voice.v

@@ -29,6 +29,7 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.ALL;
 use IEEE.numeric_std.all;
+use work.build_id.all;
 use work.mist.ALL;
 
 entity c64_mist is port
@@ -121,7 +122,8 @@ constant CONF_STR : string :=
 	"O7,Userport,4-player IF,UART;"&
 	"O4,CIA Model,6256,8521;"&
 --	"OB,BIOS,C64,C64GS;" &
-	"T5,Reset & Detach Cartridge;";
+	"T5,Reset & Detach Cartridge;"&
+	"V,v"&BUILD_DATE;
 
 -- convert string to std_logic_vector to be given to user_io
 function to_slv(s: string) return std_logic_vector is 
