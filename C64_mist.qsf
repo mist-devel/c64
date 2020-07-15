@@ -386,13 +386,10 @@ set_global_assignment -name VHDL_FILE rtl/c1541/gen_rom.vhd
 set_global_assignment -name VHDL_FILE rtl/c1541/gcr_floppy.vhd
 set_global_assignment -name VHDL_FILE rtl/c1541/c1541_sd.vhd
 set_global_assignment -name VHDL_FILE rtl/c1541/c1541_logic.vhd
-set_global_assignment -name VHDL_FILE rtl/t65/T65_Pack.vhd
-set_global_assignment -name VHDL_FILE rtl/t65/T65_MCode.vhd
-set_global_assignment -name VHDL_FILE rtl/t65/T65_ALU.vhd
-set_global_assignment -name VHDL_FILE rtl/t65/T65.vhd
 set_global_assignment -name VHDL_FILE rtl/mist/c64_mist.vhd
 set_global_assignment -name VERILOG_FILE rtl/mist/sigma_delta_dac.v
 set_global_assignment -name VERILOG_FILE rtl/mist/sdram.v
+set_global_assignment -name QIP_FILE rtl/T65/T65.qip
 set_global_assignment -name QIP_FILE "rtl/mist/mist-modules/mist.qip"
 set_global_assignment -name QIP_FILE rtl/mist/pll.qip
 set_global_assignment -name QIP_FILE rtl/mist/pll_c64.qip

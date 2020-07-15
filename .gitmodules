@@ -1,3 +1,6 @@
 [submodule "rtl/mist/mist-modules"]
 	path = rtl/mist/mist-modules
 	url = https://github.com/mist-devel/mist-modules.git
+[submodule "rtl/T65"]
+	path = rtl/T65
+	url = https://github.com/mist-devel/T65.git
