@@ -179,7 +179,6 @@ architecture rtl of fpga64_sid_iec is
 	signal pulseWrRam: std_logic;
 	signal colorWe : std_logic;
 	signal systemAddr: unsigned(15 downto 0);
-	signal ramDataReg : unsigned(7 downto 0);
 
 	signal cs_vic: std_logic;
 	signal cs_sid: std_logic;
@@ -452,7 +451,7 @@ begin
 		ioF_rom => ioF_rom,
 		max_ram => max_ram,
 
-		ramData => ramDataReg,
+		ramData => ramDataIn,
 --		ioF_ext => ioF_ext,
 --		ioE_ext => ioE_ext,
 --		io_data => io_data,
@@ -856,10 +855,6 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	process(clk32)
 	begin
 		if rising_edge(clk32) then
-			if sysCycle = CYCLE_CPUD
-			or sysCycle = CYCLE_VIC2 then
-				ramDataReg <= unsigned(ramDataIn);
-			end if;
 			if sysCycle = CYCLE_VIC3 then
 				lastVicDi <= vicDi;
 			end if;

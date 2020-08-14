@@ -37,7 +37,7 @@ module sdram (
 	
 	input  [24:0]   	addr,       // 25 bit byte address
 	input  [ 7:0]   	din,
-	output [ 7:0]  		dout,
+	output reg [ 7:0]  	dout,
 
 	input 		 		refresh,    // refresh cycle
 	input 		 		ce,         // cpu/chipset access
@@ -61,6 +61,7 @@ localparam MODE = { 3'b000, NO_WRITE_BURST, OP_MODE, CAS_LATENCY, ACCESS_TYPE, B
 localparam STATE_IDLE      = 3'd0;   // first state in cycle
 localparam STATE_CMD_START = 3'd0;   // state in which a new command can be started
 localparam STATE_CMD_CONT  = STATE_CMD_START  + RASCAS_DELAY; // 2 command can be continued
+localparam STATE_CMD_DATA  = STATE_CMD_CONT + CAS_LATENCY + 1'd1;
 localparam STATE_LAST      = 3'd7;   // last state in cycle
 
 reg [2:0] q /* synthesis noprune */;
@@ -107,8 +108,6 @@ localparam CMD_LOAD_MODE       = 4'b0000;
 
 reg [3:0] sd_cmd;   // current command sent to sd ram
 
-assign dout = sd_data[7:0];
-
 // drive control signals according to current command
 assign sd_cs  = sd_cmd[3];
 assign sd_ras = sd_cmd[2];
@@ -135,7 +134,9 @@ always @(posedge clk) begin
 		end else if((q == STATE_CMD_CONT)&&(!refresh)) begin
 			if(we)		 sd_cmd <= CMD_WRITE;
 			else if(ce)  sd_cmd <= CMD_READ;
-            if(we) sd_data <= {din, din};
+			if(we) sd_data <= {din, din};
+		end else if((q == STATE_CMD_DATA) && ce && !refresh) begin
+			dout <= sd_data[7:0];
 		end
 	end
 end

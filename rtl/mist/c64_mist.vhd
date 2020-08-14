@@ -443,6 +443,7 @@ end component cartridge;
 	signal cass_read   : std_logic;
 	
 	signal tap_mem_ce     : std_logic;
+	signal tap_mem_ce_res : std_logic;
 	signal tap_play_addr  : std_logic_vector(24 downto 0);
 	signal tap_last_addr  : std_logic_vector(24 downto 0);	
 	signal tap_reset      : std_logic;
@@ -1199,6 +1200,7 @@ begin
 			tap_last_addr <= TAP_MEM_START;			
 			tap_reset <= '1';
 			tap_mem_ce <= '0';
+			tap_mem_ce_res <= '0';
 		elsif rising_edge(clk_c64) then
 			tap_reset <= '0';
 			if ioctl_download = '1' and ioctl_index = FILE_TAP then				
@@ -1220,6 +1222,10 @@ begin
 			end if;
 			-- second mist cycle - SDRAM data ready on the next
 			if mist_cycle = '1' and mist_cycle_rD = '1' and tap_mem_ce = '1' then
+				tap_mem_ce_res <= '1';
+			end if;
+			if tap_mem_ce_res = '1' then
+				tap_mem_ce_res <= '0';
 				tap_mem_ce <= '0';
 				tap_wrreq <= '1';
 				tap_play_addr <= tap_play_addr + 1;
