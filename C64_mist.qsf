@@ -168,7 +168,7 @@ set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
 # SignalTap II Assignments
 # ========================
 set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE output_files/cpu.stp
+set_global_assignment -name USE_SIGNALTAP_FILE output_files/tap.stp
 
 # Power Estimation Assignments
 # ============================
@@ -256,6 +256,10 @@ set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[12]
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[13]
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[14]
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[15]
+
+set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SPI_DO
+set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SPI_DO
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to SPI_DO
 
 # Fitter Assignments
 # ==================
