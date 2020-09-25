@@ -919,9 +919,14 @@ begin
 			if st_reset = '1' or pll_locked = '0' then
 				reset_counter <= 1000000;
 				reset_n <= '0';
-			elsif buttons(1)='1' or st_detach_cartdrige='1' or reset_key = '1' or reset_crt='1' or
+			elsif buttons(1)='1' or st_detach_cartdrige='1' or reset_crt='1' or
 			(ioctl_download='1' and (ioctl_index = FILE_BOOT or ioctl_index = FILE_ROM or ioctl_index = FILE_CRT)) then 
+				-- hard reset
 				reset_counter <= 255;
+				reset_n <= '0';
+			elsif reset_key = '1' then
+				-- soft reset
+				reset_counter <= 10;
 				reset_n <= '0';
 			elsif erasing ='1' then
 				force_erase <= '0';
