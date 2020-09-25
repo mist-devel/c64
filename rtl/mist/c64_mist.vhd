@@ -110,18 +110,18 @@ constant CONF_STR : string :=
 	"S,D64,Mount Disk;"&
 	"F,PRGTAPCRT,Load;"& --2
 	"F,ROM,Load;"& --3
---	"F,T64,Load File;"&--6
 	"TH,Play/Stop TAP;"&
-	"OI,Tape sound,Off,On;"&
-	"OG,Disk Write,Enable,Disable;"&
-	"O2,Video standard,PAL,NTSC;"&
-	"O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
-	"ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
-	"O6,Audio filter,On,Off;"&
-	"O3,Joysticks,normal,swapped;"&
-	"O7,Userport,4-player IF,UART;"&
-	"O4,CIA Model,6256,8521;"&
---	"OB,BIOS,C64,C64GS;" &
+	"P1,Video & Audio;"&
+	"P2,System;"&
+	"P1O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
+	"P1O2,Video standard,PAL,NTSC;"&
+	"P1OI,Tape sound,Off,On;"&
+	"P1ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
+	"P1O6,Audio filter,On,Off;"&
+	"P2O3,Joysticks,Normal,Swapped;"&
+	"P2OG,Disk Write,Enable,Disable;"&
+	"P2O7,Userport,4-player IF,UART;"&
+	"P2O4,CIA Model,6256,8521;"&
 	"T5,Reset & Detach Cartridge;"&
 	"V,v"&BUILD_DATE;
 
