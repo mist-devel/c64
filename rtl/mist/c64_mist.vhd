@@ -249,6 +249,7 @@ end component cartridge;
 	signal q_reconfig_pal : std_logic_vector(0 downto 0);
 	signal q_reconfig_ntsc : std_logic_vector(0 downto 0);
 	signal pll_rom_q : std_logic;
+	signal pll_reconfig_ena : std_logic;
 
 	signal c1541_reset: std_logic;
 	signal idle0: std_logic;
@@ -258,6 +259,7 @@ end component cartridge;
 	signal mist_cycle_wr: std_logic;
 	signal mist_cycleD: std_logic;
 	signal mist_cycle_rD: std_logic;
+	signal rom_loaded : std_logic;
 	signal buttons: std_logic_vector(1 downto 0);
 
 	-- signals to connect "data_io" for direct PRG injection
@@ -804,6 +806,21 @@ begin
 		end if;
 	end process;
 
+	-- PLL Reconfig
+	process(clk32, pll_locked)
+	begin
+		if pll_locked = '0' then
+			rom_loaded <= '0';
+		elsif rising_edge(clk32) then
+			if ioctl_download = '1' then
+				rom_loaded <= '1';
+			end if;
+		end if;
+	end process;
+
+	-- don't enable pll reconfig until the initial ROM loaded or in middle of a download
+	pll_reconfig_ena <= not ioctl_download and rom_loaded;
+
 	ntsc_init_mode <= st_ntsc;
 
 	pll_rom_pal : entity work.rom_reconfig_pal
@@ -860,10 +877,12 @@ begin
 			pll_reconfig_reset <= '0';
 			case pll_reconfig_state is
 			when "00" =>
-				ntsc_init_mode_d3 <= ntsc_init_mode_d2;
-				if ntsc_init_mode_d3 /= ntsc_init_mode_d2 then
-					pll_write_from_rom <= '1';
-					pll_reconfig_state <= "01";
+				if pll_reconfig_ena = '1' then
+					if ntsc_init_mode_d3 /= ntsc_init_mode_d2 then
+						ntsc_init_mode_d3 <= ntsc_init_mode_d2;
+						pll_write_from_rom <= '1';
+						pll_reconfig_state <= "01";
+					end if;
 				end if;
 			when "01" =>
 				pll_reconfig_state <= "10";
