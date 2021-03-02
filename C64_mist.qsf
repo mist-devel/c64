@@ -352,6 +352,7 @@ set_instance_assignment -name FAST_INPUT_REGISTER ON -to UART_RX
 set_global_assignment -name VHDL_FILE build_id.vhd
 set_global_assignment -name VHDL_FILE rtl/tap_fifo.vhd
 set_global_assignment -name VHDL_FILE rtl/c1530.vhd
+set_global_assignment -name VERILOG_FILE rtl/progressbar.v
 set_global_assignment -name VERILOG_FILE rtl/sid8580/sid_voice.v
 set_global_assignment -name VERILOG_FILE rtl/sid8580/sid_filters.v
 set_global_assignment -name VERILOG_FILE rtl/sid8580/sid_envelope.v

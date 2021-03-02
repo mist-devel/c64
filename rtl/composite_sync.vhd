@@ -19,7 +19,8 @@ port(
 	ntsc  : in std_logic;
 	hsync_out : out std_logic;
 	vsync_out : out std_logic;
-	blank : out std_logic
+	hblank : out std_logic;
+	vblank : out std_logic
 );
 end composite_sync ;
 
@@ -29,12 +30,8 @@ architecture struct of composite_sync is
 	signal vsync_r : std_logic;
 	signal hsync_r : std_logic;
 	signal hsync_r0 : std_logic;
-	signal vblank : std_logic;
-	signal hblank : std_logic;
 
 begin
-
-blank <= hblank or vblank;
 
 process(clk32)
 	variable  dot_count : integer range 0 to 1023 := 0;

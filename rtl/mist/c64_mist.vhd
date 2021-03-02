@@ -116,6 +116,7 @@ constant CONF_STR : string :=
 	"P1O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
 	"P1O2,Video standard,PAL,NTSC;"&
 	"P1OI,Tape sound,Off,On;"&
+	"P1OJ,Tape progress,Off,On;"&
 	"P1ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
 	"P1O6,Audio filter,On,Off;"&
 	"P2O3,Joysticks,Normal,Swapped;"&
@@ -229,6 +230,24 @@ component cartridge port
 
 end component cartridge;
 
+component progressbar
+generic
+(
+	X_OFFSET : in integer := 100;
+	Y_OFFSET : in integer := 20
+);
+port
+(
+	clk      : in std_logic;
+	ce_pix   : in std_logic;
+	hblank   : in std_logic;
+	vblank   : in std_logic;
+	enable   : in std_logic;
+	progress : in std_logic_vector(6 downto 0);
+	pix      : out std_logic
+);
+end component progressbar;
+
 	signal pll_locked_in : std_logic_vector(1 downto 0);
 	signal pll_locked : std_logic;
 	signal pll_areset : std_logic;
@@ -337,6 +356,7 @@ end component cartridge;
 	signal status         : std_logic_vector(31 downto 0);
   
 	-- status(1) and status(12) are not used
+	signal st_tape_progress    : std_logic;                    -- status(19)
 	signal st_tape_sound       : std_logic;                    -- status(18)
 	signal st_tap_play_btn     : std_logic;                    -- status(17)
 	signal st_disk_readonly    : std_logic;                    -- status(16)
@@ -430,6 +450,8 @@ end component cartridge;
 	signal hsync : std_logic;
 	signal vsync : std_logic;
 	signal blank : std_logic;
+	signal hblank : std_logic;
+	signal vblank : std_logic;
 
 	signal old_vsync : std_logic;
 	signal hsync_out : std_logic;
@@ -443,6 +465,7 @@ end component cartridge;
 	signal cass_write  : std_logic;
 	signal cass_sense  : std_logic;
 	signal cass_read   : std_logic;
+	signal cass_run    : std_logic;
 	
 	signal tap_mem_ce     : std_logic;
 	signal tap_mem_ce_res : std_logic;
@@ -454,6 +477,9 @@ end component cartridge;
 	signal tap_fifo_error : std_logic;
 	signal tap_version    : std_logic_vector(1 downto 0);
 	signal tap_playstop_key : std_logic;
+	signal tap_progress   : unsigned(32 downto 0);
+	signal progress       : std_logic;
+	signal progress_ce_pix: std_logic;
 
 	signal reset_counter    : integer;
 	signal reset_n          : std_logic;
@@ -537,6 +563,7 @@ begin
 		mouse_strobe => mouse_strobe
 	);
 
+	st_tape_progress    <= status(19);
 	st_tape_sound       <= status(18);
 	st_tap_play_btn     <= status(17);
 	st_disk_readonly    <= status(16);
@@ -1225,6 +1252,7 @@ begin
 			tap_reset <= '1';
 			tap_mem_ce <= '0';
 			tap_mem_ce_res <= '0';
+			tap_progress <= (others => '0');
 		elsif rising_edge(clk_c64) then
 			tap_reset <= '0';
 			if ioctl_download = '1' and ioctl_index = FILE_TAP then				
@@ -1234,6 +1262,12 @@ begin
 				if ioctl_addr = x"00000C" and ioctl_wr = '1' then
 					tap_version <= ioctl_data(1 downto 0);
 				end if;
+			end if;
+
+			if tap_last_addr = TAP_MEM_START then
+				tap_progress <= (others => '0');
+			else
+				tap_progress <= unsigned(tap_play_addr-TAP_MEM_START) * x"7F" / unsigned(tap_last_addr-TAP_MEM_START);
 			end if;
 
 --			if tap_fifo_error = '1' then tap_play <= '0'; end if;
@@ -1271,8 +1305,27 @@ begin
 		cass_write => cass_write,
 		cass_motor => cass_motor,
 		cass_sense => cass_sense,
+		cass_run => cass_run,
 		osd_play_stop_toggle => st_tap_play_btn or tap_playstop_key,
 		ear_input => uart_rxD2 and not st_user_port_uart
+	);
+
+	process(clk_c64)
+	begin
+		if rising_edge(clk_c64) then
+				progress_ce_pix <= not progress_ce_pix;
+		end if;
+	end process;
+
+	bar : progressbar
+	port map(
+		clk => clk_c64,
+		ce_pix => progress_ce_pix,
+		hblank => hblank,
+		vblank => vblank,
+		enable => not cass_run and st_tape_progress,
+		progress => std_logic_vector(tap_progress(6 downto 0)),
+		pix => progress
 	);
 
 	comp_sync : entity work.composite_sync
@@ -1283,8 +1336,10 @@ begin
 		ntsc  => ntsc_init_mode,
 		hsync_out => hsync_out,
 		vsync_out => vsync_out,
-		blank => blank
+		hblank => hblank,
+		vblank => vblank
 	);
+	blank <= hblank or vblank;
 
 	c64_r <= (others => '0') when blank = '1' else std_logic_vector(r(7 downto 2));
 	c64_g <= (others => '0') when blank = '1' else std_logic_vector(g(7 downto 2));
@@ -1313,9 +1368,9 @@ begin
 
 		HSync       => not hsync_out,
 		VSync       => not vsync_out,
-		R           => c64_r,
-		G           => c64_g,
-		B           => c64_b,
+		R           => c64_r or (progress&progress&progress&progress&progress&progress),
+		G           => c64_g or (progress&progress&progress&progress&progress&progress),
+		B           => c64_b or (progress&progress&progress&progress&progress&progress),
 
 		VGA_HS      => VGA_HS,
 		VGA_VS      => VGA_VS,

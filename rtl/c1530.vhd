@@ -32,6 +32,7 @@ port(
 	cass_read  : buffer std_logic;   -- tape read signal
 	cass_write : in  std_logic;   -- signal to write on tape (not used)
 	cass_motor : in  std_logic;   -- 0 = tape motor is powered
+	cass_run   : out std_logic;   -- motor corrected with momentum
 
 	ear_input  : in  std_logic    -- tape input from EAR port
 );
@@ -247,5 +248,6 @@ begin
 end process;
 
 cass_sense <= sense;
+cass_run <= motor;
 
 end struct;
