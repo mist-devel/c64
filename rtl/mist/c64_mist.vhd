@@ -452,7 +452,7 @@ end component cartridge;
 	signal tap_wrreq      : std_logic;
 	signal tap_wrfull     : std_logic;
 	signal tap_fifo_error : std_logic;
-	signal tap_version    : std_logic;
+	signal tap_version    : std_logic_vector(1 downto 0);
 	signal tap_playstop_key : std_logic;
 
 	signal reset_counter    : integer;
@@ -1232,7 +1232,7 @@ begin
 				tap_last_addr <= ioctl_load_addr;
 				tap_reset <= '1';
 				if ioctl_addr = x"00000C" and ioctl_wr = '1' then
-					tap_version <= ioctl_data(0);
+					tap_version <= ioctl_data(1 downto 0);
 				end if;
 			end if;
 
