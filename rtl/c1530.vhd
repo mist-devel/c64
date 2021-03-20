@@ -67,6 +67,7 @@ signal motor_counter : unsigned(23 downto 0);
 
 constant autostop_time: std_logic_vector(28 downto 0) := std_logic_vector(to_unsigned(32000000 * 5, ear_autostop_counter'length)); -- about 5 seconds
 
+
 begin
 
 -- for wav mode use large depth fifo (eg 512 x 32bits)
@@ -133,7 +134,7 @@ begin
 		-- simulate tape motor momentum
 		cass_motor_D <= cass_motor;
 		if cass_motor_D /= cass_motor then
-			motor_counter <= to_unsigned(50*32000, motor_counter'length);
+			motor_counter <= to_unsigned(10*32000, motor_counter'length);
 		elsif motor_counter /= 0 then
 			motor_counter <= motor_counter - 1;
 		else
