@@ -29,6 +29,7 @@ port(
 	byte_n : out std_logic;                      -- byte ready
 	
 	track_num   : in  std_logic_vector(5 downto 0);
+	mounted     : in  std_logic;
 	
 	ram_addr    : out std_logic_vector(12 downto 0);
 	ram_do      : in  std_logic_vector(7 downto 0);
@@ -206,7 +207,7 @@ begin
 
 	  if old_track /= track_num then
 	    sector <= (others => '0'); --reset sector number on track change
-	  elsif bit_clk_en = '1' then
+	  elsif mounted = '1' and bit_clk_en = '1' then
 
 		mode_r2 <= mode;
 		if mode = '1' then autorise_write <= '0'; end if;

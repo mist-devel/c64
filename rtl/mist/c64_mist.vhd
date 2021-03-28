@@ -107,7 +107,7 @@ end component;
 
 constant CONF_STR : string := 
 	"C64;;"&
-	"S,D64,Mount Disk;"&
+	"S0U,D64,Mount Disk;"&
 	"F,PRGTAPCRT,Load;"& --2
 	"F,ROM,Load;"& --3
 	"TH,Play/Stop TAP;"&
@@ -383,6 +383,8 @@ end component progressbar;
 	signal sd_buff_din    : std_logic_vector(7 downto 0);
 	signal sd_buff_wr     : std_logic;
 	signal sd_change      : std_logic_vector(1 downto 0);
+	signal sd_mount       : std_logic;
+	signal sd_size        : std_logic_vector(31 downto 0);
 	signal disk_readonly  : std_logic;
 	signal old_download     : std_logic;	
 	signal sdram_we : std_logic;
@@ -555,6 +557,7 @@ begin
 		sd_din => sd_buff_din,
 		sd_dout_strobe => sd_buff_wr,
 		img_mounted => sd_change,
+		img_size => sd_size,
 		ps2_kbd_clk => ps2_clk,
 		ps2_kbd_data => ps2_dat,
 		mouse_x => mouse_x,
@@ -1207,6 +1210,7 @@ begin
 
 	sd_rd(1) <= '0';
 	sd_wr(1) <= '0';
+	sd_mount <= '0' when sd_size = 0 else '1';
 
 	c1541_sd_inst : entity work.c1541_sd
 	port map
@@ -1220,6 +1224,7 @@ begin
 		c1541rom_wr => c1541rom_wr,
 
 		disk_change => sd_change(0),
+		disk_mount => sd_mount,
 		disk_num  => (others => '0'), -- always 0 on MiST, the image is selected by the OSD menu
 		disk_readonly => disk_readonly,
 

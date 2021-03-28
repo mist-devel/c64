@@ -33,6 +33,7 @@ port(
 	
 	disk_num : in std_logic_vector(9 downto 0);
 	disk_change : in std_logic;
+	disk_mount  : in std_logic := '1';
 	disk_readonly : in std_logic;
 
 	iec_atn_i  : in std_logic;
@@ -112,6 +113,7 @@ signal save_track_stage : std_logic_vector(3 downto 0);
 
 signal wps_flag : std_logic;
 signal change_timer : integer;
+signal mounted : std_logic := '0';
 
 signal dbg_sector : std_logic_vector(4 downto 0); 
 signal dbg_adr_fetch : std_logic_vector(15 downto 0); 
@@ -136,6 +138,7 @@ component mist_sd_card port
 
 		save_track     : in  std_logic;
 		change         : in  std_logic;                     -- Force reload as disk may have changed
+		mount          : in  std_logic;                     -- insert(1)/remove(0)
 		track          : in  std_logic_vector(5 downto 0);  -- Track number (0-34)
 		busy           : out std_logic;
 
@@ -204,6 +207,7 @@ port map
 	byte_n => byte_n, -- byte ready
 
 	track_num  => new_track_num_dbl(6 downto 1),
+	mounted    => mounted,
 
 	ram_addr   => floppy_ram_addr,
 	ram_do     => ram_do, 	
@@ -232,6 +236,7 @@ port map
 	save_track    => save_track,
 	sector_offset => sector_offset,
 	change        => disk_change,
+	mount         => disk_mount,
 
 	sd_buff_addr => sd_buff_addr,
 	sd_buff_dout => sd_buff_dout,
@@ -278,6 +283,7 @@ begin
 		change_timer <= 0;
 	elsif rising_edge(clk32) then
 		if disk_change = '1' then
+			mounted <= disk_mount;
 			change_timer <= 1000000;
 		elsif change_timer /= 0 then
 			change_timer <= change_timer - 1;

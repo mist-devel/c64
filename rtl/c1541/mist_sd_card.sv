@@ -36,6 +36,7 @@ module mist_sd_card
 
 	input         save_track,
 	input         change,
+	input         mount,
 	input   [5:0] track,
 
 	output [12:0] ram_addr,
@@ -67,7 +68,7 @@ always @(posedge clk) begin
 	reg saving = 0;
 
 	old_change <= change;
-	if(~old_change & change) ready <= 1;
+	if(~old_change & change) ready <= mount;
 
 	old_ack <= sd_ack;
 	if(sd_ack) {sd_rd,sd_wr} <= 0;
