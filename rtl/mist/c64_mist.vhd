@@ -590,6 +590,8 @@ begin
 		SPI_DI => SPI_DI,
 		SPI_DO => SPI_DO,
 
+		clkref_n => not mist_cycle,
+
 		ioctl_download => ioctl_download,
 		ioctl_index => ioctl_index,
 		ioctl_wr => ioctl_wr,
@@ -1075,7 +1077,7 @@ begin
 		SIDclk => open,
 		still => open,
 		idle0 => idle0, -- first set of idle cycles
-		idle => idle, -- second set of idle cycles
+		idle => idle, -- second set of idle cycles (for refresh)
 		audio_data_l => audio_data_l,
 		audio_data_r => audio_data_r,
 		extfilter_en => not st_audio_filter_off,

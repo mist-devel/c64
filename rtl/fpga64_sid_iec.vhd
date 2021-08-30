@@ -314,7 +314,12 @@ begin
 
 	idle0 <= '1' when
 	  (sysCycle = CYCLE_IDLE0) or (sysCycle = CYCLE_IDLE1) or
-	  (sysCycle = CYCLE_IDLE2) or (sysCycle = CYCLE_IDLE3) else '0';
+	  (sysCycle = CYCLE_IDLE2) or (sysCycle = CYCLE_IDLE3) or
+	  (sysCycle = CYCLE_CPU0) or (sysCycle = CYCLE_CPU1) or
+	  (sysCycle = CYCLE_CPU2) or (sysCycle = CYCLE_CPU3) or
+	  (sysCycle = CYCLE_CPU8) or (sysCycle = CYCLE_CPU9) or
+	  (sysCycle = CYCLE_CPUA) or (sysCycle = CYCLE_CPUB) 
+	  else '0';
 	idle <= '1' when
 	  (sysCycle = CYCLE_IDLE4) or (sysCycle = CYCLE_IDLE5) or
 	  (sysCycle = CYCLE_IDLE6) or (sysCycle = CYCLE_IDLE7) else '0';
@@ -839,17 +844,13 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	ramDataOut <= "00" & unsigned(cia2_pao)(5 downto 3) & "000" when sysCycle >= CYCLE_IEC0 and sysCycle <= CYCLE_IEC3 else cpuDo;
 	ramAddr <= systemAddr;
 	ramWe <= '0' when sysCycle = CYCLE_IEC2 or sysCycle = CYCLE_IEC3 else not systemWe;
-	ramCE <= '0' when sysCycle /= CYCLE_IDLE0 and sysCycle /= CYCLE_IDLE1 and sysCycle /= CYCLE_IDLE2 and sysCycle /= CYCLE_IDLE3 and
-	                  sysCycle /= CYCLE_IDLE4 and sysCycle /= CYCLE_IDLE5 and sysCycle /= CYCLE_IDLE6 and sysCycle /= CYCLE_IDLE7 and
-	                  sysCycle /= CYCLE_IEC0 and sysCycle /= CYCLE_IEC1 and sysCycle /= CYCLE_IEC2 and sysCycle /= CYCLE_IEC3 and
-	                  sysCycle /= CYCLE_CPU0 and sysCycle /= CYCLE_CPU1 and sysCycle /= CYCLE_CPUF and
+	ramCE <= '0' when (sysCycle = CYCLE_VIC0 or sysCycle = CYCLE_VIC1 or sysCycle = CYCLE_VIC2 or
+	                  sysCycle = CYCLE_CPUC or sysCycle = CYCLE_CPUD or sysCycle = CYCLE_CPUE) and
 	                  cs_ram = '1' else '1';
 
 	romAddr <= "00" & cpuAddr(14) & cpuAddr(12 downto 0);
-	romCE <= '0' when sysCycle /= CYCLE_IDLE0 and sysCycle /= CYCLE_IDLE1 and sysCycle /= CYCLE_IDLE2 and sysCycle /= CYCLE_IDLE3 and
-	                  sysCycle /= CYCLE_IDLE4 and sysCycle /= CYCLE_IDLE5 and sysCycle /= CYCLE_IDLE6 and sysCycle /= CYCLE_IDLE7 and
-	                  sysCycle /= CYCLE_IEC0 and sysCycle /= CYCLE_IEC1 and sysCycle /= CYCLE_IEC2 and sysCycle /= CYCLE_IEC3 and
-	                  sysCycle /= CYCLE_CPU0 and sysCycle /= CYCLE_CPU1 and sysCycle /= CYCLE_CPUF and
+	romCE <= '0' when (sysCycle = CYCLE_VIC0 or sysCycle = CYCLE_VIC1 or sysCycle = CYCLE_VIC2 or
+	                  sysCycle = CYCLE_CPUC or sysCycle = CYCLE_CPUD or sysCycle = CYCLE_CPUE) and
 	                  cs_rom = '1' else '1';
 
 	process(clk32)
