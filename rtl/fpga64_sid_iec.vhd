@@ -39,6 +39,7 @@ entity fpga64_sid_iec is
 	port(
 		clk32       : in  std_logic;
 		reset_n     : in  std_logic;
+		turbo_sel   : in  std_logic_vector(1 downto 0);
 		-- keyboard interface (use any ordinairy PS2 keyboard)
 		kbd_clk     : in  std_logic;
 		kbd_dat     : in  std_logic;
@@ -147,14 +148,14 @@ end fpga64_sid_iec;
 architecture rtl of fpga64_sid_iec is
 	-- System state machine
 	type sysCycleDef is (
-		CYCLE_IDLE0, CYCLE_IDLE1, CYCLE_IDLE2, CYCLE_IDLE3,
-		CYCLE_IDLE4, CYCLE_IDLE5, CYCLE_IDLE6, CYCLE_IDLE7,
-		CYCLE_IEC0, CYCLE_IEC1, CYCLE_IEC2, CYCLE_IEC3,
-		CYCLE_VIC0, CYCLE_VIC1, CYCLE_VIC2, CYCLE_VIC3,
-		CYCLE_CPU0, CYCLE_CPU1, CYCLE_CPU2, CYCLE_CPU3,
+		CYCLE_IDLE0, CYCLE_IDLE1, CYCLE_IDLE2, CYCLE_IDLE3, -- idle0 (IO controller use)
+		CYCLE_IDLE4, CYCLE_IDLE5, CYCLE_IDLE6, CYCLE_IDLE7, -- idle (SDRAM refresh usage)
+		CYCLE_IEC0, CYCLE_IEC1, CYCLE_IEC2, CYCLE_IEC3, -- iec  (IO controller use)
+		CYCLE_VIC0, CYCLE_VIC1, CYCLE_VIC2, CYCLE_VIC3, -- VIC/turbo CPU
+		CYCLE_CPU0, CYCLE_CPU1, CYCLE_CPU2, CYCLE_CPU3, -- idle0 (IO controller use)
 		CYCLE_CPU4, CYCLE_CPU5, CYCLE_CPU6, CYCLE_CPU7,
-		CYCLE_CPU8, CYCLE_CPU9, CYCLE_CPUA, CYCLE_CPUB,
-		CYCLE_CPUC, CYCLE_CPUD, CYCLE_CPUE, CYCLE_CPUF
+		CYCLE_CPU8, CYCLE_CPU9, CYCLE_CPUA, CYCLE_CPUB, -- idle0 (IO controller use)
+		CYCLE_CPUC, CYCLE_CPUD, CYCLE_CPUE, CYCLE_CPUF  -- VIC bad line/CPU
 	);
 
 	signal sysCycle : sysCycleDef := sysCycleDef'low;
@@ -166,6 +167,14 @@ architecture rtl of fpga64_sid_iec is
 	signal irqLoc: std_logic;
 	signal nmiLoc: std_logic;
 	signal aec : std_logic;
+	signal border: std_logic;
+
+	signal turbo_en: std_logic;
+	signal turbo_en_sync: std_logic;
+	signal turbo_switch: unsigned(1 downto 0);
+	signal turbo_reg_en: std_logic;
+	signal turbo_dis: std_logic;
+	signal turbo: std_logic;
 
 	signal enableCpu: std_logic;
 	signal enableVic : std_logic;
@@ -211,7 +220,7 @@ architecture rtl of fpga64_sid_iec is
 	signal cia1Do: unsigned(7 downto 0);
 	signal cia2Do: unsigned(7 downto 0);
 
--- keyboard
+	-- keyboard
 	signal newScanCode: std_logic;
 	signal theScanCode: unsigned(7 downto 0);
 
@@ -371,14 +380,27 @@ begin
 				phi0_cpu <= '1';
 				if baLoc = '1' or cpuWe = '1' then
 					cpuHasBus <= '1';
+				else
+					cpuHasBus <= '0';
 				end if;
 			end if;
 			if sysCycle = sysCycleDef'high then
 				phi0_cpu <= '0';
-				cpuHasBus <= '0';
+				if turbo = '1' then
+					cpuHasBus <= '1';
+				else
+					cpuHasBus <= '0';
+				end if;
 			end if;
 		end if;
 	end process;
+
+	turbo_reg_en <= '1' when turbo_sel = "01" else '0';
+
+	turbo_en <= '1' when (turbo_sel = "10" and border = '1') or
+	                     (turbo_sel = "01" and turbo_switch(0) = '1') else
+	            '0';
+	turbo <= '1' when turbo_en_sync = '1' and turbo_dis = '0' and cs_color = '0' and cs_vic = '0' and cs_cia1 = '0' and cs_cia2 = '0' and cs_sid = '0' else '0';
 
 	process(clk32)
 	begin
@@ -391,9 +413,17 @@ begin
 			case sysCycle is
 			when CYCLE_VIC2 =>
 				enableVic <= '1';
+				if turbo = '1' then
+					enableCpu <= '1';
+				end if;
+				turbo_dis <= '0';
 			when CYCLE_CPUE =>
 				enableVic <= '1';
 				enableCpu <= '1';
+				turbo_en_sync <= turbo_en;
+				if cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' then
+					turbo_dis <= '1'; -- stretch the CPU clock when a peripheral is selected
+				end if;
 			when CYCLE_CPUC =>
 				enableCia_n <= '1';
 			when CYCLE_CPUF =>
@@ -542,6 +572,9 @@ begin
 			baSync => '0',
 			ba => baLoc,
 
+			turbo_reg_en => turbo_reg_en,
+			turbo_switch => turbo_switch,
+
 			mode6569 => (not ntscMode),
 			mode6567old => '0',
 			mode6567R8 => ntscMode,
@@ -563,6 +596,7 @@ begin
 			hsync => vicHSync,
 			vsync => vicVSync,
 			colorIndex => vicColorIndex,
+			border => border,
 
 			irq_n => irq_vic
 		);

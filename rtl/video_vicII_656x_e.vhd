@@ -37,6 +37,9 @@ entity video_vicii_656x is
 		baSync : in std_logic;
 		ba: out std_logic;
 
+		turbo_reg_en : in std_logic;
+		turbo_switch : out unsigned(1 downto 0);
+
 		mode6569 : in std_logic; -- PAL 63 cycles and 312 lines
 		mode6567old : in std_logic; -- old NTSC 64 cycles and 262 line
 		mode6567R8 : in std_logic; -- new NTSC 65 cycles and 263 line
@@ -61,6 +64,7 @@ entity video_vicii_656x is
 		hSync : out std_logic;
 		vSync : out std_logic;
 		colorIndex : out unsigned(3 downto 0);
+		border: out std_logic;
 
 		-- Debug outputs
 		debugX : out unsigned(9 downto 0);

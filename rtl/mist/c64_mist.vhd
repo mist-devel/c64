@@ -123,6 +123,7 @@ constant CONF_STR : string :=
 	"P2OG,Disk Write,Enable,Disable;"&
 	"P2O7,Userport,4-player IF,UART;"&
 	"P2O4,CIA Model,6256,8521;"&
+	"P2OAB,Turbo,Off,Software Switchable,On;"&
 	"T5,Reset & Detach Cartridge;"&
 	"V,v"&BUILD_DATE;
 
@@ -361,7 +362,7 @@ end component progressbar;
 	signal st_tap_play_btn     : std_logic;                    -- status(17)
 	signal st_disk_readonly    : std_logic;                    -- status(16)
 	signal st_sid_mode         : std_logic_vector(2 downto 0); -- status(15 downto 13)
-	signal st_c64gs            : std_logic;                    -- status(11)
+	signal st_turbo            : std_logic_vector(1 downto 0); -- status(11 downto 10)
 	signal st_scandoubler_fx   : std_logic_vector(1 downto 0); -- status(9 downto 8)
 	signal st_user_port_uart   : std_logic;                    -- status(7)
 	signal st_audio_filter_off : std_logic;                    -- status(6)
@@ -571,7 +572,7 @@ begin
 	st_tap_play_btn     <= status(17);
 	st_disk_readonly    <= status(16);
 	st_sid_mode         <= status(15 downto 13);
-	st_c64gs            <= status(11);
+	st_turbo            <= status(11 downto 10);
 	st_scandoubler_fx   <= status(9 downto 8);
 	st_user_port_uart   <= status(7);
 	st_audio_filter_off <= status(6);
@@ -1034,6 +1035,7 @@ begin
 	port map(
 		clk32 => clk_c64,
 		reset_n => reset_n,
+		turbo_sel => st_turbo,
 		kbd_clk => not ps2_clk,
 		kbd_dat => ps2_dat,
 		ramAddr => c64_addr_int,

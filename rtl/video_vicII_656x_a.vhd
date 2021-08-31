@@ -206,6 +206,7 @@ architecture rtl of video_vicii_656x is
 	signal myWr_b : std_logic;
 	signal myWr_c : std_logic;
 	signal myRd : std_logic;
+	signal turbo_reg: unsigned(1 downto 0);
 
 begin
 -- -----------------------------------------------------------------------
@@ -216,6 +217,8 @@ begin
 	hSync <= hBlanking;
 	vSync <= vBlanking;
 	irq_n <= not IRQ;
+	border <= TBBorder;
+	turbo_switch <= turbo_reg;
 
 -- -----------------------------------------------------------------------
 -- chip-select signals and data/address bus latch
@@ -1470,6 +1473,7 @@ writeRegisters: process(clk)
 				spriteColors(5) <= (others => '0');
 				spriteColors(6) <= (others => '0');
 				spriteColors(7) <= (others => '0');
+				turbo_reg <= "00";
 			else
 
 				if (myWr_a = '1') then
@@ -1560,6 +1564,7 @@ writeRegisters: process(clk)
 						MX(5)(8) <= di_r(5);
 						MX(6)(8) <= di_r(6);
 						MX(7)(8) <= di_r(7);
+					when "110000" => turbo_reg <= di_r(1 downto 0);
 					when others => null;
 					end case;
 				end if;
@@ -1624,6 +1629,12 @@ readRegisters: process(clk)
 			when "101100" => do <= "1111" & spriteColors(5);
 			when "101101" => do <= "1111" & spriteColors(6);
 			when "101110" => do <= "1111" & spriteColors(7);
+			when "110000" =>
+				if turbo_reg_en = '1' then
+					do <= "111111" & turbo_reg;
+				else
+					do <= (others => '1');
+				end if;
 			when others => do <= (others => '1');
 			end case;
 			end if;
