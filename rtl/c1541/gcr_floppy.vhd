@@ -29,6 +29,8 @@ port(
 	byte_n : out std_logic;                      -- byte ready
 	
 	track_num   : in  std_logic_vector(5 downto 0);
+	id1         : in  std_logic_vector(7 downto 0);
+	id2         : in  std_logic_vector(7 downto 0);
 	mounted     : in  std_logic;
 	
 	ram_addr    : out std_logic_vector(12 downto 0);
@@ -97,11 +99,11 @@ dbg_sector <= sector;
 with byte_cnt select
   data_header <= 
 		X"08"                          when "000000000",
-	  "00"&track_num xor "000"&sector when "000000001",
+	  "00"&track_num xor "000"&sector xor id1 xor id2 when "000000001",
 	  "000"&sector                    when "000000010",
 	  "00"&track_num                  when "000000011",
-	  X"20"                           when "000000100",
-	  X"20"                           when "000000101",
+	  id2                             when "000000100",
+	  id1                             when "000000101",
 	  X"0F"                           when others;
 
 with byte_cnt select
@@ -174,12 +176,11 @@ begin
 
 		mode_r1 <= mode;
 
+		bit_clk_en <= '0';
+		byte_n <= '1';
 		if (mode_r1 xor mode) = '1' then -- read <-> write change
 			bit_clk_cnt := (others => '0');			
-			byte_n <= '1';
-			bit_clk_en <= '0';
-		else
-			bit_clk_en <= '0';
+		elsif mtr = '1' then
 			if bit_clk_cnt = bit_clk_div then
 				bit_clk_en <= '1';
 				bit_clk_cnt := (others => '0');
@@ -187,12 +188,9 @@ begin
 				bit_clk_cnt := bit_clk_cnt + '1';
 			end if;
 
-			byte_n <= '1';
-			if byte_in_n = '0' and mtr = '1' and ram_ready = '1' then
-				if bit_clk_cnt > X"10" then
-					if bit_clk_cnt < X"5E" then
-						byte_n <= '0';
-					end if;
+			if byte_in_n = '0' and ram_ready = '1' then
+				if bit_clk_cnt > X"10" and bit_clk_cnt < X"5E" then
+					byte_n <= '0';
 				end if;
 			end if;
 		end if;
@@ -233,11 +231,11 @@ begin
 			nibble          <= '0';
 			gcr_bit_cnt     <= (others => '0');
 			bit_cnt         <= (others => '0');
-			c1541_logic_din <= (others => '0');
+			c1541_logic_din <= (others => '1');
 			gcr_byte        <= (others => '0');
 			data_cks        <= (others => '0');
 
-			if sync_cnt = X"31" then 
+			if sync_cnt = X"27" then 
 				sync_cnt <= (others => '0');
 				sync_in_n <= '1';
 			else
@@ -282,12 +280,14 @@ begin
 				gcr_byte_out <= c1541_logic_dout;
 			end if;
 
-			if state = '0' then 
-				if byte_cnt = "000010000" then
+			if state = '0' then
+				-- header
+				if byte_cnt = "000001111" and bit_cnt = 0 then
 					sync_in_n <= '0';
 					state<= '1';
 				end if;
 			else
+				-- data
 				if byte_cnt = "100010001" then 
 					sync_in_n <= '0';
 					state <= '0';

@@ -110,7 +110,8 @@ signal save_track      : std_logic;
 signal track_modified   : std_logic;
 signal sector_offset    : std_logic;
 signal save_track_stage : std_logic_vector(3 downto 0);
-
+signal id1 : std_logic_vector(7 downto 0);
+signal id2 : std_logic_vector(7 downto 0);
 signal wps_flag : std_logic;
 signal change_timer : integer;
 signal mounted : std_logic := '0';
@@ -135,6 +136,8 @@ component mist_sd_card port
 		ram_do         : in  std_logic_vector(7 downto 0);
 		ram_we         : out std_logic;
 		sector_offset  : out std_logic;  -- 0 : sector 0 is at ram adr 0, 1 : sector 0 is at ram adr 256
+		id1            : out std_logic_vector(7 downto 0);
+		id2            : out std_logic_vector(7 downto 0);
 
 		save_track     : in  std_logic;
 		change         : in  std_logic;                     -- Force reload as disk may have changed
@@ -207,6 +210,8 @@ port map
 	byte_n => byte_n, -- byte ready
 
 	track_num  => new_track_num_dbl(6 downto 1),
+	id1 => id1,
+	id2 => id2,
 	mounted    => mounted,
 
 	ram_addr   => floppy_ram_addr,
@@ -235,6 +240,8 @@ port map
 	busy          => sd_busy,
 	save_track    => save_track,
 	sector_offset => sector_offset,
+	id1           => id1,
+	id2           => id2,
 	change        => disk_change,
 	mount         => disk_mount,
 

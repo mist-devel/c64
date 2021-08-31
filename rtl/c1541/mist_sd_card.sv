@@ -45,6 +45,8 @@ module mist_sd_card
 	output        ram_we,
 	output reg    sector_offset, // 0 : sector 0 is at ram adr 0,
 	                             // 1 : sector 0 is at ram adr 256
+	output reg [7:0] id1,
+	output reg [7:0] id2,
 	output reg    busy
 );
 
@@ -59,29 +61,48 @@ wire [9:0] start_sectors[41] =
 		  414,433,452,471,490,508,526,544,562,580,598,615,632,649,666,683,700,717,734,751};
 
 reg [31:0] lba;
-reg [3:0]  rel_lba;
+reg  [3:0] rel_lba;
+
+reg        new_disk;
+wire [5:0] new_track = new_disk ? 5'h12 : track;
 
 always @(posedge clk) begin
 	reg old_ack;
+	reg old_change;
 	reg [5:0] cur_track = 0;
-	reg old_change, ready = 0;
+	reg ready = 0;
 	reg saving = 0;
-
-	old_change <= change;
-	if(~old_change & change) ready <= mount;
 
 	old_ack <= sd_ack;
 	if(sd_ack) {sd_rd,sd_wr} <= 0;
 
+	old_change <= change;
+	if(~old_change & change) begin
+		ready <= mount;
+		saving <= 0;
+		busy <= 0;
+		id1 <= 8'h20;
+		id2 <= 8'h20;
+		new_disk <= mount;
+	end
+	else
 	if(reset) begin
 		cur_track <= 'b111111;
 		busy  <= 0;
 		sd_rd <= 0;
 		sd_wr <= 0;
 		saving<= 0;
+		id1   <= 8'h20;
+		id2   <= 8'h20;
+		new_disk <= 0;
 	end
 	else
 	if(busy) begin
+		// BAM offset A2 and A3 -> header ID1,ID2
+		if(cur_track == 5'h12 && rel_lba == 0 && !saving && sd_buff_wr) begin
+			if (sd_buff_addr == 9'h1a2) id1 <= sd_buff_dout;
+			else if (sd_buff_addr == 9'h1a3) id2 <= sd_buff_dout;
+		end
 		if(old_ack && ~sd_ack) begin
 			if(~&rel_lba) begin
 				lba <= lba + 1'd1;
@@ -114,12 +135,13 @@ always @(posedge clk) begin
 			busy <= 1;
 		end
 		else
-		if((cur_track != track) || (old_change && ~change)) begin
+		if((cur_track != track) || new_disk) begin
 			saving <= 0;
-			cur_track <= track;
+			new_disk <= 0;
+			cur_track <= new_track;
 			rel_lba <= 0;
-			sector_offset <= start_sectors[track][0] ;
-			lba <= start_sectors[track][9:1];
+			sector_offset <= start_sectors[new_track][0] ;
+			lba <= start_sectors[new_track][9:1];
 			sd_rd <= 1;
 			busy <= 1;
 		end
