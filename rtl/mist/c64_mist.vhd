@@ -247,7 +247,8 @@ port
 	hblank   : in std_logic;
 	vblank   : in std_logic;
 	enable   : in std_logic;
-	progress : in std_logic_vector(6 downto 0);
+	current  : in unsigned(24 downto 0);
+	max      : in unsigned(24 downto 0);
 	pix      : out std_logic
 );
 end component progressbar;
@@ -486,7 +487,6 @@ end component progressbar;
 	signal tap_fifo_error : std_logic;
 	signal tap_version    : std_logic_vector(1 downto 0);
 	signal tap_playstop_key : std_logic;
-	signal tap_progress   : unsigned(32 downto 0);
 	signal progress       : std_logic;
 	signal progress_ce_pix: std_logic;
 
@@ -1277,7 +1277,6 @@ begin
 			tap_reset <= '1';
 			tap_mem_ce <= '0';
 			tap_mem_ce_res <= '0';
-			tap_progress <= (others => '0');
 		elsif rising_edge(clk_c64) then
 			tap_reset <= '0';
 			if ioctl_download = '1' and ioctl_index = FILE_TAP then				
@@ -1287,12 +1286,6 @@ begin
 				if ioctl_addr = x"00000C" and ioctl_wr = '1' then
 					tap_version <= ioctl_data(1 downto 0);
 				end if;
-			end if;
-
-			if tap_last_addr = TAP_MEM_START then
-				tap_progress <= (others => '0');
-			else
-				tap_progress <= unsigned(tap_play_addr-TAP_MEM_START) * x"7F" / unsigned(tap_last_addr-TAP_MEM_START);
 			end if;
 
 --			if tap_fifo_error = '1' then tap_play <= '0'; end if;
@@ -1338,7 +1331,7 @@ begin
 	process(clk_c64)
 	begin
 		if rising_edge(clk_c64) then
-				progress_ce_pix <= not progress_ce_pix;
+			progress_ce_pix <= not progress_ce_pix;
 		end if;
 	end process;
 
@@ -1349,7 +1342,8 @@ begin
 		hblank => hblank,
 		vblank => vblank,
 		enable => not cass_run and st_tape_progress,
-		progress => std_logic_vector(tap_progress(6 downto 0)),
+		current => unsigned(tap_play_addr-TAP_MEM_START),
+		max => unsigned(tap_last_addr-TAP_MEM_START),
 		pix => progress
 	);
 
