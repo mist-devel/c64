@@ -127,20 +127,22 @@ constant CONF_STR : string :=
 	"T5,Reset & Detach Cartridge;"&
 	"V,v"&BUILD_DATE;
 
--- convert string to std_logic_vector to be given to user_io
-function to_slv(s: string) return std_logic_vector is 
+type   conf_ram_t is array (CONF_STR'length-1 downto 0) of std_logic_vector(7 downto 0);
+
+-- convert string to RAM to be given to user_io
+function to_ram(s: string) return conf_ram_t is 
   constant ss: string(1 to s'length) := s; 
-  variable rval: std_logic_vector(1 to 8 * s'length); 
-  variable p: integer; 
+  variable rval: conf_ram_t; 
   variable c: integer; 
 begin 
   for i in ss'range loop
-    p := 8 * i;
     c := character'pos(ss(i));
-    rval(p - 7 to p) := std_logic_vector(to_unsigned(c,8)); 
+    rval(i-1) := std_logic_vector(to_unsigned(c,8)); 
   end loop; 
   return rval; 
 end function; 
+
+signal conf_ram : conf_ram_t := to_ram(CONF_STR);
 
 -- constants for ioctl_index 
 constant FILE_BOOT : std_logic_vector(7 downto 0) := x"00";      -- ROM files sent at boot time
@@ -156,8 +158,9 @@ generic
 );
 port
 (
-	clk_sys			  : in std_logic;
-	SPI_SCK, SPI_SS2, SPI_SS4, SPI_DI, SPI_DO :in std_logic;
+	clk_sys			      : in std_logic;
+	SPI_SCK, SPI_SS2, SPI_SS4, SPI_DI : in std_logic;
+	SPI_DO            : inout std_logic;
 	clkref_n          : in  std_logic := '0';
 	ioctl_download    : out std_logic;
 	ioctl_index       : out std_logic_vector(7 downto 0);
@@ -354,7 +357,10 @@ end component progressbar;
 	signal c64_g  : std_logic_vector(5 downto 0);
 	signal c64_b  : std_logic_vector(5 downto 0);
 
-	signal status         : std_logic_vector(31 downto 0);
+	signal conf_str_addr : std_logic_vector(9 downto 0);
+	signal conf_str_char : std_logic_vector(7 downto 0);
+
+	signal status         : std_logic_vector(63 downto 0);
   
 	-- status(1) and status(12) are not used
 	signal st_tape_progress    : std_logic;                    -- status(19)
@@ -385,7 +391,7 @@ end component progressbar;
 	signal sd_buff_wr     : std_logic;
 	signal sd_change      : std_logic_vector(1 downto 0);
 	signal sd_mount       : std_logic;
-	signal sd_size        : std_logic_vector(31 downto 0);
+	signal sd_size        : std_logic_vector(63 downto 0);
 	signal disk_readonly  : std_logic;
 	signal old_download     : std_logic;	
 	signal sdram_we : std_logic;
@@ -517,10 +523,18 @@ begin
 
 	sd_sdhc <= '1';
 	sd_conf <= '0';
+
 	-- User io
+	process(clk_c64)
+	begin
+		if rising_edge(clk_c64) then
+			conf_str_char <= conf_ram(to_integer(unsigned(conf_str_addr)));
+		end if;
+	end process;
+
 	user_io_d : user_io
 	generic map (
-		STRLEN => CONF_STR'length,
+		--STRLEN => CONF_STR'length,
 		ROM_DIRECT_UPLOAD => true,
 		PS2DIV => 1000
 	)
@@ -538,7 +552,9 @@ begin
 		joystick_2 => joyC,
 		joystick_3 => joyD,
 
-		conf_str => to_slv(CONF_STR),
+		--conf_str => to_slv(CONF_STR),
+		conf_addr => conf_str_addr,
+		conf_chr => conf_str_char,
 
 		status => status,
 		buttons => buttons,
