@@ -1515,7 +1515,6 @@ writeRegisters: process(clk)
 						RES <= di_r(5);
 						MCM <= di_r(4);
 						CSEL <= di_r(3);
-						xscroll <= di_r(2 downto 0);
 					when "010111" => MYE <= di_r;
 					when "011000" =>
 						VM <= di_r(7 downto 4);
@@ -1555,6 +1554,8 @@ writeRegisters: process(clk)
 					when "001101" => MY(6) <= di_r;
 					when "001110" => MX(7)(7 downto 0) <= di_r;
 					when "001111" => MY(7) <= di_r;
+					when "010110" =>
+						xscroll <= di_r(2 downto 0);
 					when "010000" =>
 						MX(0)(8) <= di_r(0);
 						MX(1)(8) <= di_r(1);
