@@ -607,7 +607,7 @@ begin
 		SPI_DI => SPI_DI,
 		SPI_DO => SPI_DO,
 
-		clkref_n => not mist_cycle,
+		clkref_n => '0',
 
 		ioctl_download => ioctl_download,
 		ioctl_index => ioctl_index,
