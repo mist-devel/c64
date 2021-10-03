@@ -481,25 +481,31 @@ wire [4:0] icr_adj = {icr[4:2], timer_b_int, icr[0]};
 
 // Interrupt Control
 always @(posedge clk) begin
-  reg [7:0] imr_reg;
+  reg  [4:0] imr_reg;
 
   if (!res_n) begin
     imr       <= 5'h00;
-    imr_reg   <= 0;
+    imr_reg   <= 5'h00;
     irq_n     <= 1'b1;
     int_reset <= 0;
   end
   else begin
-    if (wr && rs == 4'hd) imr_reg <= db_in;
+    if (!mode & phi2_n & int_reset) begin
+      irq_n <= 1;
+      int_reset <= 0;
+    end
+
+    if (wr && rs == 4'hd) imr_reg <= db_in[7] ? imr | db_in[4:0] : imr & ~db_in[4:0];
     if (rd && rs == 4'hd) int_reset <= 1;
 
     if (phi2_p | mode) begin
-      imr <= imr_reg[7] ? imr | imr_reg[4:0] : imr & ~imr_reg[4:0];
+      imr <= imr_reg;
       irq_n <= irq_n ? ~|(imr & icr_adj) : irq_n;
     end
-    if (phi2_p & int_reset) begin
+
+    if (mode & phi2_p & int_reset) begin
       irq_n <= 1;
-	  int_reset <= 0;
+      int_reset <= 0;
     end
   end
 end
