@@ -76,7 +76,7 @@ entity fpga64_sid_iec is
 		irq_n       : inout std_logic;
 		nmi_n       : in  std_logic;
 		nmi_ack     : out std_logic;
-		dma_n       : in  std_logic;
+		dma_n       : in  std_logic := '1';
 		ba          : out std_logic;
 		romL        : out std_logic;        -- cart signals LCA
 		romH        : out std_logic;        -- cart signals LCA
@@ -163,10 +163,13 @@ architecture rtl of fpga64_sid_iec is
 	signal phi0_cpu : std_logic;
 	signal cpuHasBus : std_logic;
 
+	signal baVic: std_logic;
 	signal baLoc: std_logic;
 	signal irqLoc: std_logic;
 	signal nmiLoc: std_logic;
-	signal aec : std_logic;
+	signal addrValidVic: std_logic;
+	signal aecVic: std_logic;
+	signal aecLoc: std_logic;
 	signal border: std_logic;
 
 	signal turbo_en: std_logic;
@@ -319,7 +322,7 @@ begin
 -- -----------------------------------------------------------------------
 -- Local signal to outside world
 -- -----------------------------------------------------------------------
-	ba <= baLoc;
+	ba <= baVic;
 
 	idle0 <= '1' when
 	  (sysCycle = CYCLE_IDLE0) or (sysCycle = CYCLE_IDLE1) or
@@ -378,29 +381,21 @@ begin
 		if rising_edge(clk32) then
 			if sysCycle = sysCycleDef'pred(CYCLE_CPU0) then
 				phi0_cpu <= '1';
-				if baLoc = '1' or cpuWe = '1' then
-					cpuHasBus <= '1';
-				else
-					cpuHasBus <= '0';
-				end if;
 			end if;
 			if sysCycle = sysCycleDef'high then
 				phi0_cpu <= '0';
-				if turbo = '1' then
-					cpuHasBus <= '1';
-				else
-					cpuHasBus <= '0';
-				end if;
 			end if;
 		end if;
 	end process;
+
+	cpuHasBus <= '1' when turbo = '1' or (aecLoc = '1' and (baLoc = '1' or cpuWe = '1')) else '0';
 
 	turbo_reg_en <= '1' when turbo_sel = "01" else '0';
 
 	turbo_en <= '1' when (turbo_sel = "10" and border = '1') or
 	                     (turbo_sel = "01" and turbo_switch(0) = '1') else
 	            '0';
-	turbo <= '1' when turbo_en_sync = '1' and turbo_dis = '0' and cs_color = '0' and cs_vic = '0' and cs_cia1 = '0' and cs_cia2 = '0' and cs_sid = '0' else '0';
+	turbo <= '1' when turbo_en_sync = '1' and turbo_dis = '0' else '0';
 
 	process(clk32)
 	begin
@@ -428,6 +423,10 @@ begin
 				enableCia_n <= '1';
 			when CYCLE_CPUF =>
 				enableCia_p <= '1';
+			when CYCLE_IDLE1 =>
+				if cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' then
+					turbo_dis <= '1'; -- stretch the CPU clock when a peripheral is selected
+				end if;
 			when others =>
 				null;
 			end case;
@@ -471,12 +470,14 @@ begin
 -- -----------------------------------------------------------------------
 -- PLA and bus-switches
 -- -----------------------------------------------------------------------
+	aecVic <= not addrValidVic;
+	aecLoc <= aecVic and dma_n;
+
 	buslogic: entity work.fpga64_buslogic
 	port map (
 		clk => clk32,
 		reset => reset,
 		cpuHasBus => cpuHasBus,
-		aec => aec,
 
 		bankSwitch => cpuIO(2 downto 0),
 
@@ -552,8 +553,8 @@ begin
 	-- In the first three cycles after BA went low, the VIC reads
 	-- $ff as character pointers and
 	-- as color information the lower 4 bits of the opcode after the access to $d011.
-	vicDiAec <= vicBus when aec = '0' else vicDi;
-	colorDataAec <= cpuDi(3 downto 0) when aec = '0' else colorData;
+	vicDiAec <= vicBus when cpuHasBus = '1' and baVic = '0' else vicDi;
+	colorDataAec <= cpuDi(3 downto 0) when cpuHasBus = '1' and baVic = '0' else colorData;
 
 	vic: entity work.video_vicii_656x
 		generic map (
@@ -570,7 +571,7 @@ begin
 			phi => phi0_cpu,
 			
 			baSync => '0',
-			ba => baLoc,
+			ba => baVic,
 
 			turbo_reg_en => turbo_reg_en,
 			turbo_switch => turbo_switch,
@@ -591,7 +592,7 @@ begin
 			do => vicData,
 
 			vicAddr => vicAddr(13 downto 0),
-			addrValid => aec,
+			addrValid => addrValidVic,
 
 			hsync => vicHSync,
 			vsync => vicVSync,
@@ -782,6 +783,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 -- -----------------------------------------------------------------------
 -- 6510 CPU
 -- -----------------------------------------------------------------------
+	baLoc <= baVic and dma_n;
+
 	cpu: entity work.cpu_6510
 
 		port map (
@@ -854,8 +857,7 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 					reset_cnt <= reset_cnt + 1;
 				end if;
 			end if;
-			if reset_n = '0'
-			or dma_n = '0' then -- temp reset fix
+			if reset_n = '0' then
 				reset_cnt <= 0;
 			end if;
 		end if;
