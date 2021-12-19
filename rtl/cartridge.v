@@ -21,7 +21,7 @@ module cartridge
 	input  [15:0] cart_bank_size,			// length of each bank
 	input  [15:0] cart_bank_num,
 	input   [7:0] cart_bank_type,
-	input  [24:0] cart_bank_raddr,		// chip packet address
+	input  [23:0] cart_bank_raddr,		// chip packet address
 	input         cart_bank_wr,
 
 	input         cart_attached,			// FLAG to say cart has been loaded
@@ -30,7 +30,7 @@ module cartridge
 	input  [15:0] c64_mem_address_in,	// address from cpu
 	input   [7:0] c64_data_out,			// data from cpu going to sdram
 
-	output [24:0] sdram_address_out, 	// translated address output
+	output [23:0] sdram_address_out, 	// translated address output
 	output        exrom,						// exrom line
 	output        game,						// game line
 	output reg    IOE_ena,					// FLAG to enable IOE address relocation
@@ -42,7 +42,7 @@ module cartridge
 	input         nmi_ack
 );
 
-reg [24:0] addr_out;
+reg [23:0] addr_out;
 assign     sdram_address_out = addr_out;
 
 reg  [6:0] bank_lo;
@@ -550,16 +550,16 @@ assign mem_ce_out = mem_ce | ioe_ce | iof_ce;
 always @(*) begin
 	addr_out = c64_mem_address_in;
 	if(cart_attached) begin
-		if(romH & (romH_we | ~mem_write)) addr_out[24:13] = romH_we ? {1'b1, bank_hi[2:0]} : {1'b1, bank_hi};
+		if(romH & (romH_we | ~mem_write)) addr_out[23:13] = romH_we ? {1'b1, bank_hi[2:0]} : {1'b1, bank_hi};
 		if(romL & (romL_we | ~mem_write)) begin
-			addr_out[24:13] = romL_we ? {1'b1, bank_lo[2:0]} : {1'b1, bank_lo};
+			addr_out[23:13] = romL_we ? {1'b1, bank_lo[2:0]} : {1'b1, bank_lo};
 			addr_out[12:0]  = c64_mem_address_in[12:0] & mask_lo;
 		end
 
-		if(ioe_ce) addr_out[24:13] = IOE_wr_ena ? {1'b1, IOE_bank[2:0]} : {1'b1, IOE_bank}; // read/write to DExx
-		if(iof_ce) addr_out[24:13] = IOF_wr_ena ? {1'b1, IOF_bank[2:0]} : {1'b1, IOF_bank}; // read/write to DFxx
+		if(ioe_ce) addr_out[23:13] = IOE_wr_ena ? {1'b1, IOE_bank[2:0]} : {1'b1, IOE_bank}; // read/write to DExx
+		if(iof_ce) addr_out[23:13] = IOF_wr_ena ? {1'b1, IOF_bank[2:0]} : {1'b1, IOF_bank}; // read/write to DFxx
 
-		if(UMAXromH && !mem_write) addr_out[24:12] = {1'b1, bank_hi, 1'b1}; // ULTIMAX CharROM
+		if(UMAXromH && !mem_write) addr_out[23:12] = {1'b1, bank_hi, 1'b1}; // ULTIMAX CharROM
 	end
 end
 

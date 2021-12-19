@@ -13,7 +13,7 @@
 -- The VIC-II runs in the first 4 cycles of 32 Mhz clock.
 -- The CPU runs in the last 16 cycles. Effective cpu speed is 1 Mhz.
 -- 4 additional cycles are used to interface with the C-One IEC port.
--- 
+--
 -- -----------------------------------------------------------------------
 -- Dar 08/03/2014 
 --
@@ -68,6 +68,12 @@ entity fpga64_sid_iec is
 		b           : out unsigned(7 downto 0);
 
 		-- cartridge port
+		phi         : out std_logic;
+		rnw_i       : in  std_logic;
+		rnw_o       : out std_logic;
+		addr_i      : in  unsigned(15 downto 0);
+		din         : in  unsigned( 7 downto 0);
+		dout        : out unsigned( 7 downto 0);
 		game        : in  std_logic;
 		exrom       : in  std_logic;
 		ioE_rom     : in std_logic;
@@ -150,7 +156,7 @@ architecture rtl of fpga64_sid_iec is
 	type sysCycleDef is (
 		CYCLE_IDLE0, CYCLE_IDLE1, CYCLE_IDLE2, CYCLE_IDLE3, -- idle0 (IO controller use)
 		CYCLE_IDLE4, CYCLE_IDLE5, CYCLE_IDLE6, CYCLE_IDLE7, -- idle (SDRAM refresh usage)
-		CYCLE_IEC0, CYCLE_IEC1, CYCLE_IEC2, CYCLE_IEC3, -- iec  (IO controller use)
+		CYCLE_IEC0, CYCLE_IEC1, CYCLE_IEC2, CYCLE_IEC3, -- iec  (IO controller, REU use)
 		CYCLE_VIC0, CYCLE_VIC1, CYCLE_VIC2, CYCLE_VIC3, -- VIC/turbo CPU
 		CYCLE_CPU0, CYCLE_CPU1, CYCLE_CPU2, CYCLE_CPU3, -- idle0 (IO controller use)
 		CYCLE_CPU4, CYCLE_CPU5, CYCLE_CPU6, CYCLE_CPU7,
@@ -241,12 +247,16 @@ architecture rtl of fpga64_sid_iec is
 	signal debugData: unsigned(7 downto 0) := (others => '0');
 	signal debugAddr: integer range 2047 downto 0 := 0;
 
+	signal busWe: std_logic;
+	signal busAddr: unsigned(15 downto 0);
+	signal busDo: unsigned(7 downto 0);
+
 	signal cpuWe: std_logic;
 	signal cpuAddr: unsigned(15 downto 0);
 	signal cpuDi: unsigned(7 downto 0);
 	signal cpuDo: unsigned(7 downto 0);
 	signal cpuIO: unsigned(7 downto 0);
-	
+
 	signal ioF_ext: std_logic;
 	signal ioE_ext: std_logic;
 	signal io_data: unsigned(7 downto 0);
@@ -336,6 +346,10 @@ begin
 	  (sysCycle = CYCLE_IDLE4) or (sysCycle = CYCLE_IDLE5) or
 	  (sysCycle = CYCLE_IDLE6) or (sysCycle = CYCLE_IDLE7) else '0';
 
+	phi <= phi0_cpu;
+	rnw_o <= not systemWe;
+	dout <= cpuDo when cpuWe = '1' else cpuDi;
+
 -- -----------------------------------------------------------------------
 -- System state machine, controls bus accesses
 -- and triggers enables of other components
@@ -388,7 +402,9 @@ begin
 		end if;
 	end process;
 
-	cpuHasBus <= '1' when turbo = '1' or (aecLoc = '1' and (baLoc = '1' or cpuWe = '1')) else '0';
+	cpuHasBus <= '1' when turbo = '1' or
+	                      (dma_n = '0' and phi0_cpu = '1') or -- dma access counts as CPU access in this context
+	                      (aecLoc = '1' and (baLoc = '1' or cpuWe = '1')) else '0';
 
 	turbo_reg_en <= '1' when turbo_sel = "01" else '0';
 
@@ -416,7 +432,7 @@ begin
 				enableVic <= '1';
 				enableCpu <= '1';
 				turbo_en_sync <= turbo_en;
-				if cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' then
+				if cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' or cs_ioE = '1' or cs_ioF = '1' then
 					turbo_dis <= '1'; -- stretch the CPU clock when a peripheral is selected
 				end if;
 			when CYCLE_CPUC =>
@@ -424,7 +440,7 @@ begin
 			when CYCLE_CPUF =>
 				enableCia_p <= '1';
 			when CYCLE_IDLE1 =>
-				if cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' then
+				if cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' or cs_ioE = '1' or cs_ioF = '1' then
 					turbo_dis <= '1'; -- stretch the CPU clock when a peripheral is selected
 				end if;
 			when others =>
@@ -455,7 +471,7 @@ begin
 			clk => clk32,
 			we => colorWe,
 			addr => systemAddr(9 downto 0),
-			d => cpuDo(3 downto 0),
+			d => busDo(3 downto 0),
 			q => colorQ
 		);
 
@@ -472,6 +488,10 @@ begin
 -- -----------------------------------------------------------------------
 	aecVic <= not addrValidVic;
 	aecLoc <= aecVic and dma_n;
+
+	busWe <= cpuWe when dma_n = '1' else not rnw_i;
+	busAddr <= cpuAddr when dma_n = '1' else addr_i;
+	busDo <= cpuDo when dma_n = '1' else din;
 
 	buslogic: entity work.fpga64_buslogic
 	port map (
@@ -492,9 +512,9 @@ begin
 --		ioE_ext => ioE_ext,
 --		io_data => io_data,
 
-		cpuWe => cpuWe,
-		cpuAddr => cpuAddr,
-		cpuData => cpuDo,
+		busWe => busWe,
+		busAddr => busAddr,
+		busData => din,
 		vicAddr => vicAddr,
 		vicData => vicData,
 		sidData => unsigned(sid_do),
@@ -526,7 +546,7 @@ begin
 	begin
 		if rising_edge(clk32) then
 			pulseWrRam <= '0';
-			if cpuWe = '1' then
+			if busWe = '1' then
 				if sysCycle = CYCLE_CPUC then
 					pulseWrRam <= '1';
 				end if;
@@ -541,8 +561,8 @@ begin
 	begin
 		if rising_edge(clk32) then
 			if phi0_cpu = '1' then
-				if cpuWe = '1' and cs_vic = '1' then
-					vicBus <= cpuDo;
+				if busWe = '1' and cs_vic = '1' then
+					vicBus <= busDo;
 				else
 					vicBus <= x"FF";
 				end if;
@@ -582,11 +602,11 @@ begin
 			mode6572 => '0',
 
 			cs => cs_vic,
-			we => cpuWe,
+			we => busWe,
 			lp_n => cia1_pbi(4),
 
-			aRegisters => cpuAddr(5 downto 0),
-			diRegisters => cpuDo,
+			aRegisters => busAddr(5 downto 0),
+			diRegisters => busDo,
 			di => vicDiAec,
 			diColor => colorDataAec,
 			do => vicData,
@@ -655,8 +675,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	pot_y <= cd4066_sigB and cd4066_sigD;
 
 	second_sid_en <= '0' when sid_mode(0) = '0' else
-	                 '1' when cpuAddr(11 downto 8) = x"4" and cpuAddr(5) = '1' else -- D420
-	                 '1' when cpuAddr(11 downto 8) = x"5" else -- D500
+	                 '1' when busAddr(11 downto 8) = x"4" and busAddr(5) = '1' else -- D420
+	                 '1' when busAddr(11 downto 8) = x"5" else -- D500
 	                 '0';
 
 	sid_6581: entity work.sid_top
@@ -667,9 +687,9 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 		clock => clk32,
 		reset => reset,
 
-		addr => second_sid_en & "00" & cpuAddr(4 downto 0),
+		addr => second_sid_en & "00" & busAddr(4 downto 0),
 		wren => pulseWrRam and phi0_cpu and cs_sid,
-		wdata => std_logic_vector(cpuDo),
+		wdata => std_logic_vector(busDo),
 		rdata => sid_do6581,
 
 		potx => pot_x,
@@ -692,8 +712,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 		clk_1MHz => clk_1MHz(31),
 		cs => cs_sid and not second_sid_en,
 		we => pulseWrRam and phi0_cpu,
-		addr => std_logic_vector(cpuAddr(4 downto 0)),
-		data_in => std_logic_vector(cpuDo),
+		addr => std_logic_vector(busAddr(4 downto 0)),
+		data_in => std_logic_vector(busDo),
 		data_out => sid_do8580_l,
 		pot_x => pot_x,
 		pot_y => pot_y,
@@ -708,8 +728,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 		clk_1MHz => clk_1MHz(31),
 		cs => cs_sid and second_sid_en,
 		we => pulseWrRam and phi0_cpu,
-		addr => std_logic_vector(cpuAddr(4 downto 0)),
-		data_in => std_logic_vector(cpuDo),
+		addr => std_logic_vector(busAddr(4 downto 0)),
+		data_in => std_logic_vector(busDo),
 		data_out => sid_do8580_r,
 		pot_x => pot_x,
 		pot_y => pot_y,
@@ -728,10 +748,10 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 			phi2_n => enableCia_n,
 			res_n => not reset,
 			cs_n => not cs_cia1,
-			rw => not cpuWe,
+			rw => not busWe,
 
-			rs => std_logic_vector(cpuAddr)(3 downto 0),
-			db_in => std_logic_vector(cpuDo),
+			rs => std_logic_vector(busAddr)(3 downto 0),
+			db_in => std_logic_vector(busDo),
 			unsigned(db_out) => cia1Do,
 
 			pa_in => std_logic_vector(cia1_pai),
@@ -758,10 +778,10 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 			phi2_n => enableCia_n,
 			res_n => not reset,
 			cs_n => not cs_cia2,
-			rw => not cpuWe,
+			rw => not busWe,
 
-			rs => std_logic_vector(cpuAddr)(3 downto 0),
-			db_in => std_logic_vector(cpuDo),
+			rs => std_logic_vector(busAddr)(3 downto 0),
+			db_in => std_logic_vector(busDo),
 			unsigned(db_out) => cia2Do,
 
 			pa_in => std_logic_vector(cia2_pai),
@@ -877,14 +897,14 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	iec_data_o <= not cia2_pao(5);
 	iec_clk_o <= not cia2_pao(4);
 	iec_atn_o <= not cia2_pao(3);
-	ramDataOut <= "00" & unsigned(cia2_pao)(5 downto 3) & "000" when sysCycle >= CYCLE_IEC0 and sysCycle <= CYCLE_IEC3 else cpuDo;
+	ramDataOut <= "00" & unsigned(cia2_pao)(5 downto 3) & "000" when sysCycle >= CYCLE_IEC0 and sysCycle <= CYCLE_IEC3 else busDo;
 	ramAddr <= systemAddr;
 	ramWe <= '0' when sysCycle = CYCLE_IEC2 or sysCycle = CYCLE_IEC3 else not systemWe;
 	ramCE <= '0' when (sysCycle = CYCLE_VIC0 or sysCycle = CYCLE_VIC1 or sysCycle = CYCLE_VIC2 or
 	                  sysCycle = CYCLE_CPUC or sysCycle = CYCLE_CPUD or sysCycle = CYCLE_CPUE) and
 	                  cs_ram = '1' else '1';
 
-	romAddr <= "00" & cpuAddr(14) & cpuAddr(12 downto 0);
+	romAddr <= "00" & busAddr(14) & busAddr(12 downto 0);
 	romCE <= '0' when (sysCycle = CYCLE_VIC0 or sysCycle = CYCLE_VIC1 or sysCycle = CYCLE_VIC2 or
 	                  sysCycle = CYCLE_CPUC or sysCycle = CYCLE_CPUD or sysCycle = CYCLE_CPUE) and
 	                  cs_rom = '1' else '1';
@@ -899,7 +919,7 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	end process;
 
 --serialBus and SID
-	serialBus: process(clk32, sysCycle, cs_sid, cs_ioE, cs_ioF, cs_romL, cs_romH, cpuWe)
+	serialBus: process(clk32, sysCycle, cs_sid, cs_ioE, cs_ioF, cs_romL, cs_romH)
 	begin
 		ces <= "1111";
 		if sysCycle = CYCLE_IEC0

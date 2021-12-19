@@ -23,25 +23,28 @@
 module sdram (
 
 	// interface to the MT48LC16M16 chip
-	output reg [12:0]	sd_addr,    // 13 bit multiplexed address bus
-	inout  reg [15:0]	sd_data,
-	output reg [ 1:0]	sd_ba,      // two banks
-	output 				sd_cs,      // a single chip select
-	output 				sd_we,      // write enable
-	output 				sd_ras,     // row address select
-	output 				sd_cas,     // columns address select
+	output reg [12:0] sd_addr,    // 13 bit multiplexed address bus
+	inout  reg [15:0] sd_data,
+	output reg [ 1:0] sd_ba,      // two banks
+	output            sd_cs,      // a single chip select
+	output            sd_we,      // write enable
+	output            sd_ras,     // row address select
+	output            sd_cas,     // columns address select
+	output reg        sd_dqml,
+	output reg        sd_dqmh,
 
 	// cpu/chipset interface
-	input 		 		init,			// init signal after FPGA config to initialize RAM
-	input 		 		clk,			// sdram is accessed at up to 128MHz
-	
-	input  [24:0]   	addr,       // 25 bit byte address
-	input  [ 7:0]   	din,
-	output reg [ 7:0]  	dout,
+	input             init,     // init signal after FPGA config to initialize RAM
+	input             clk,      // sdram is accessed at up to 128MHz
 
-	input 		 		refresh,    // refresh cycle
-	input 		 		ce,         // cpu/chipset access
-	input 		 		we          // cpu/chipset requests write
+	input   [1:0]     bs,         // byte selects
+	input  [23:0]     addr,       // 24 bit byte address
+	input  [15:0]     din,
+	output reg [15:0] dout,
+
+	input             refresh,    // refresh cycle
+	input             ce,         // cpu/chipset access
+	input             we          // cpu/chipset requests write
 );
 
 // no burst configured
@@ -73,9 +76,10 @@ always @(posedge clk) begin
 	// start a new cycle in rising edge of ce or refresh
 	if((ce && !last_ce) || (refresh && !last_refresh))
 		q <= 3'd1;
-	
+
 	if(q != 0)
-			q <= q + 3'd1;
+		q <= q + 3'd1;
+
 end
 
 // ---------------------------------------------------------------------
@@ -121,6 +125,8 @@ always @(posedge clk) begin
 	sd_addr <= (reset != 0)?reset_addr:run_addr;
 	sd_ba   <= addr[22:21];
 	sd_data <= 16'bZZZZZZZZZZZZZZZZ;
+	sd_dqml <= 1;
+	sd_dqmh <= 1;
 
 	if(reset != 0) begin
 		if(q == STATE_IDLE) begin
@@ -132,11 +138,18 @@ always @(posedge clk) begin
 			if(ce && !last_ce)           sd_cmd <= CMD_ACTIVE;
 			if(refresh && !last_refresh) sd_cmd <= CMD_AUTO_REFRESH;
 		end else if((q == STATE_CMD_CONT)&&(!refresh)) begin
-			if(we)		 sd_cmd <= CMD_WRITE;
-			else if(ce)  sd_cmd <= CMD_READ;
-			if(we) sd_data <= {din, din};
-		end else if((q == STATE_CMD_DATA) && ce && !refresh) begin
-			dout <= sd_data[7:0];
+			if(we) begin
+				sd_cmd <= CMD_WRITE;
+				sd_data <= din;
+				sd_dqml <= ~bs[0];
+				sd_dqmh <= ~bs[1];
+			end else if(ce) begin
+				sd_cmd <= CMD_READ;
+				sd_dqml <= 0;
+				sd_dqmh <= 0;
+			end
+		end else if((q == STATE_CMD_DATA) && ce && !we && !refresh) begin
+			dout <= sd_data;
 		end
 	end
 end

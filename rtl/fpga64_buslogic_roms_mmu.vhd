@@ -43,9 +43,9 @@ entity fpga64_buslogic is
 		ioF_rom : in std_logic;
 		max_ram : in std_logic;
 
-		cpuWe: in std_logic;
-		cpuAddr: in unsigned(15 downto 0);
-		cpuData: in unsigned(7 downto 0);
+		busWe: in std_logic;
+		busAddr: in unsigned(15 downto 0);
+		busData: in unsigned(7 downto 0);
 		vicAddr: in unsigned(15 downto 0);
 		vicData: in unsigned(7 downto 0);
 		sidData: in unsigned(7 downto 0);
@@ -127,7 +127,7 @@ begin
 	--
 	--begin
 	process(ramData, vicData, sidData, colorData,
-           cia1Data, cia2Data, charData, romData,
+           cia1Data, cia2Data, charData, romData, busData,
 			  cs_romHReg, cs_romLReg, cs_romReg, cs_CharReg,
 			  cs_ramReg, cs_vicReg, cs_sidReg, cs_colorReg,
 			  cs_cia1Reg, cs_cia2Reg, lastVicData,
@@ -157,9 +157,9 @@ begin
 		elsif cs_romHReg = '1' then
 			dataToCpu <= ramData;
 		elsif cs_ioEReg = '1' and ioE_rom = '1' then
-			dataToCpu <= ramData;
+			dataToCpu <= busData;
 		elsif cs_ioFReg = '1' and ioF_rom = '1' then
-			dataToCpu <= ramData;
+			dataToCpu <= busData;
 		end if;
 	end process;
 
@@ -188,13 +188,13 @@ begin
 
 			if (cpuHasBus = '1') then
 				-- The 6502 CPU has the bus.					
-				currentAddr <= cpuAddr;
-				case cpuAddr(15 downto 12) is
+				currentAddr <= busAddr;
+				case busAddr(15 downto 12) is
 				when X"E" | X"F" =>
-					if ultimax = '1' and cpuWe = '0' then
+					if ultimax = '1' and busWe = '0' then
 						-- ULTIMAX MODE - drop out the kernal - LCA
 						cs_romHReg <= '1';
-					elsif cpuWe = '0' and bankSwitch(1) = '1' then
+					elsif busWe = '0' and bankSwitch(1) = '1' then
 						-- Read kernal
 						cs_romReg <= '1';
 					else
@@ -206,7 +206,7 @@ begin
 						-- 64Kbyte RAM layout
 						cs_ramReg <= '1';
 					elsif ultimax = '1' or bankSwitch(2) = '1' then
-						case cpuAddr(11 downto 8) is
+						case busAddr(11 downto 8) is
 							when X"0" | X"1" | X"2" | X"3" =>
 								cs_vicReg <= '1';
 							when X"4" | X"5" | X"6" | X"7" =>
@@ -226,17 +226,17 @@ begin
 						end case;
 					else
 						-- I/O space turned off. Read from charrom or write to RAM.
-						if cpuWe = '0' then
+						if busWe = '0' then
 							  cs_CharReg <= '1';
 						else
 							  cs_ramReg <= '1';
 						end if;
 					end if;
 				when X"A" | X"B" =>
-					if exrom = '0' and game = '0' and cpuWe = '0' and bankSwitch(1) = '1' then
+					if exrom = '0' and game = '0' and busWe = '0' and bankSwitch(1) = '1' then
 						-- Access cartridge with romH
 						cs_romHReg <= '1';
-					elsif ultimax = '0' and cpuWe = '0' and bankSwitch(1) = '1' and bankSwitch(0) = '1' then
+					elsif ultimax = '0' and busWe = '0' and bankSwitch(1) = '1' and bankSwitch(0) = '1' then
 						-- Access basic rom
 						-- May need turning off if kernal banked out LCA
 						cs_romReg <= '1';
@@ -263,7 +263,7 @@ begin
 					end if;
 				end case;
 
-				systemWe <= cpuWe;
+				systemWe <= busWe;
 			else
 				currentAddr <= vicAddr;
 

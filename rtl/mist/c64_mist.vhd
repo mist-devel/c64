@@ -90,15 +90,18 @@ component sdram is port
    sd_we      : out   std_logic;
    sd_ras     : out   std_logic;
    sd_cas     : out   std_logic;
+   sd_dqml    : out   std_logic;
+   sd_dqmh    : out   std_logic;
 
    -- system interface
    clk        : in    std_logic;
    init       : in    std_logic;
 
    -- cpu/chipset interface
-   addr       : in    std_logic_vector(24 downto 0);
-   din        : in    std_logic_vector( 7 downto 0);
-   dout       : out   std_logic_vector( 7 downto 0);
+   addr       : in    std_logic_vector(23 downto 0);
+   din        : in    std_logic_vector(15 downto 0);
+   dout       : out   std_logic_vector(15 downto 0);
+   bs         : in    std_logic_vector( 1 downto 0);
    refresh    : in    std_logic;
    we         : in    std_logic;
    ce         : in    std_logic
@@ -108,7 +111,7 @@ end component;
 constant CONF_STR : string := 
 	"C64;;"&
 	"S0U,D64,Mount Disk;"&
-	"F,PRGTAPCRT,Load;"& --2
+	"F,PRGTAPCRTREU,Load;"& --2
 	"F,ROM,Load;"& --3
 	"TH,Play/Stop TAP;"&
 	"P1,Video & Audio;"&
@@ -124,6 +127,7 @@ constant CONF_STR : string :=
 	"P2O7,Userport,4-player IF,UART;"&
 	"P2O4,CIA Model,6256,8521;"&
 	"P2OAB,Turbo,Off,Software Switchable,On;"&
+	"P2OKM,REU,Off,512K,1MB,2MB,4MB,8MB,16MB;"&
 	"T5,Reset & Detach Cartridge;"&
 	"V,v"&BUILD_DATE;
 
@@ -149,6 +153,7 @@ constant FILE_BOOT : std_logic_vector(7 downto 0) := x"00";      -- ROM files se
 constant FILE_PRG  : std_logic_vector(7 downto 0) := x"02";
 constant FILE_TAP  : std_logic_vector(7 downto 0) := x"42";
 constant FILE_CRT  : std_logic_vector(7 downto 0) := x"82";
+constant FILE_REU  : std_logic_vector(7 downto 0) := x"C2";
 constant FILE_ROM  : std_logic_vector(7 downto 0) := x"03";
 
 component data_io 
@@ -212,7 +217,7 @@ component cartridge port
 	cart_bank_size  : in std_logic_vector(15 downto 0);	-- length of each bank
 	cart_bank_num   : in std_logic_vector(15 downto 0);
 	cart_bank_type  : in std_logic_vector(7 downto 0);
-	cart_bank_raddr : in std_logic_vector(24 downto 0);	-- chip packet address
+	cart_bank_raddr : in std_logic_vector(23 downto 0);	-- chip packet address
 	cart_bank_wr    : in std_logic;
 
 	cart_attached: in std_logic;									-- FLAG to say cart has been loaded
@@ -221,7 +226,7 @@ component cartridge port
 	c64_mem_address_in: in std_logic_vector(15 downto 0);	-- address from cpu
 	c64_data_out: in std_logic_vector(7 downto 0);			-- data from cpu going to sdram
 
-	sdram_address_out: out std_logic_vector(24 downto 0); -- translated address output
+	sdram_address_out: out std_logic_vector(23 downto 0); -- translated address output
 	exrom       : out std_logic;									-- exrom line
 	game        : out std_logic;									-- game line
 	IOE_ena     : out std_logic;
@@ -275,10 +280,12 @@ end component progressbar;
 	signal pll_rom_q : std_logic;
 	signal pll_reconfig_ena : std_logic;
 
+	signal phi: std_logic;
 	signal c1541_reset: std_logic;
 	signal idle0: std_logic;
 	signal idle: std_logic;
 	signal ces: std_logic_vector(3 downto 0);
+	signal reu_cycle: std_logic;
 	signal mist_cycle: std_logic;
 	signal mist_cycle_wr: std_logic;
 	signal mist_cycleD: std_logic;
@@ -291,10 +298,11 @@ end component progressbar;
 	signal ioctl_addr: std_logic_vector(24 downto 0);
 	signal ioctl_data: std_logic_vector(7 downto 0);
 	signal ioctl_index: std_logic_vector(7 downto 0);
-	signal ioctl_ram_addr: std_logic_vector(24 downto 0);
+	signal ioctl_ram_addr: std_logic_vector(23 downto 0);
 	signal ioctl_ram_data: std_logic_vector(7 downto 0);
-	signal ioctl_load_addr  : std_logic_vector(24 downto 0);
+	signal ioctl_load_addr  : std_logic_vector(23 downto 0);
 	signal ioctl_ram_wr: std_logic;
+	signal ioctl_bs: std_logic_vector(1 downto 0); -- byte select
 	signal ioctl_download: std_logic;
 
 	signal prg_reg_update: std_logic;
@@ -302,11 +310,18 @@ end component progressbar;
 	signal prg_end: std_logic_vector(15 downto 0);
 	signal prg_data: std_logic_vector(7 downto 0);
 
+	signal c64_rnw: std_logic;
 	signal c64_addr: std_logic_vector(15 downto 0);
 	signal c64_data_in: std_logic_vector(7 downto 0);
 	signal c64_data_out: std_logic_vector(7 downto 0);
-	signal sdram_addr: std_logic_vector(24 downto 0);
-	signal sdram_data_out: std_logic_vector(7 downto 0);
+
+	signal c64_ram_din:  std_logic_vector(7 downto 0);
+	signal c64_ram_dout: std_logic_vector(7 downto 0);
+
+	signal sdram_addr: std_logic_vector(23 downto 0);
+	signal sdram_data_out: std_logic_vector(15 downto 0);
+	signal sdram_data_in: std_logic_vector(15 downto 0);
+	signal sdram_bs: std_logic_vector(1 downto 0);
 
 --	cartridge signals LCA
 	signal cart_id 			: std_logic_vector(15 downto 0);					-- cart ID or cart type
@@ -335,7 +350,7 @@ end component progressbar;
 	signal UMAXromH		: std_logic;													-- VIC II Ultimax access - LCA
 	
 	signal CPU_hasbus		: std_logic;
-	
+	signal c64_ba        : std_logic;
 	signal c1541rom_wr   : std_logic;
 
 	signal joyA : std_logic_vector(31 downto 0);
@@ -364,6 +379,7 @@ end component progressbar;
 	signal status         : std_logic_vector(63 downto 0);
   
 	-- status(1) and status(12) are not used
+	signal st_reu              : std_logic_vector(2 downto 0); -- status(22 downto 20)
 	signal st_tape_progress    : std_logic;                    -- status(19)
 	signal st_tape_sound       : std_logic;                    -- status(18)
 	signal st_tap_play_btn     : std_logic;                    -- status(17)
@@ -437,11 +453,6 @@ end component progressbar;
 	signal ntsc_init_mode_d2: std_logic;
 	signal ntsc_init_mode_d3: std_logic;
 
-	alias  c64_addr_int : unsigned is unsigned(c64_addr);
-	alias  c64_data_in_int   : unsigned is unsigned(c64_data_in);
-	signal c64_data_in16: std_logic_vector(15 downto 0);
-	alias  c64_data_out_int   : unsigned is unsigned(c64_data_out);
-
 	signal rom_ce : std_logic;
 	signal c64_rom_addr : unsigned(15 downto 0);
 
@@ -479,8 +490,8 @@ end component progressbar;
 	
 	signal tap_mem_ce     : std_logic;
 	signal tap_mem_ce_res : std_logic;
-	signal tap_play_addr  : std_logic_vector(24 downto 0);
-	signal tap_last_addr  : std_logic_vector(24 downto 0);	
+	signal tap_play_addr  : std_logic_vector(23 downto 0);
+	signal tap_last_addr  : std_logic_vector(23 downto 0);
 	signal tap_reset      : std_logic;
 	signal tap_wrreq      : std_logic;
 	signal tap_wrfull     : std_logic;
@@ -497,7 +508,7 @@ end component progressbar;
 	signal nmi         :  std_logic;
 	signal nmi_ack     :  std_logic;
 	signal erasing          : std_logic;
-	signal c64_addr_temp : std_logic_vector(24 downto 0);	
+	signal c64_addr_temp    : std_logic_vector(23 downto 0);
 	signal cart_blk_len     : std_logic_vector(31 downto 0);	
 	signal cart_hdr_cnt     : std_logic_vector(3 downto 0);
 	signal erase_cartram    : std_logic := '0';
@@ -507,11 +518,29 @@ end component progressbar;
 	signal uart_rxD         : std_logic;
 	signal uart_rxD2        : std_logic;
 
+	-- DMA/REU
+	signal reu_enable       : std_logic;
+	signal reu_rommask      : std_logic_vector( 4 downto 0);
+
+	signal reu_addr         : std_logic_vector(15 downto 0);
+	signal reu_rnw          : std_logic;
+	signal reu_din          : std_logic_vector( 7 downto 0);
+	signal reu_dout         : std_logic_vector( 7 downto 0);
+	signal reu_oe           : std_logic;
+	signal reu_irq_n        : std_logic;
+	signal dma_n            : std_logic := '1';
+
+	signal reu_ram_addr     : std_logic_vector(23 downto 0);
+	signal reu_ram_ce       : std_logic := '0';
+	signal reu_ram_we       : std_logic;
+	signal reu_ram_di       : std_logic_vector( 7 downto 0);
+	signal reu_ram_do       : std_logic_vector( 7 downto 0);
+
 	-- sdram layout 
-	constant C64_MEM_START : std_logic_vector(24 downto 0) := '0' & X"000000"; -- normal C64 RAM
-	constant C64_ROM_START : std_logic_vector(24 downto 0) := '0' & X"0F0000"; -- kernal/basic ROM
-	constant CRT_MEM_START : std_logic_vector(24 downto 0) := '0' & X"100000"; -- cartridges
-	constant TAP_MEM_START : std_logic_vector(24 downto 0) := '0' & X"200000"; -- .tap files 
+	constant C64_MEM_START : std_logic_vector(23 downto 0) := X"000000"; -- normal C64 RAM
+	constant C64_ROM_START : std_logic_vector(23 downto 0) := X"0F0000"; -- kernal/basic ROM
+	constant CRT_MEM_START : std_logic_vector(23 downto 0) := X"100000"; -- cartridges
+	constant TAP_MEM_START : std_logic_vector(23 downto 0) := X"200000"; -- .tap files 
 	
 begin
 
@@ -520,6 +549,9 @@ begin
 
 	-- use iec and the first set of idle cycles for mist access
 	mist_cycle <= '1' when ces = "1011" or idle0 = '1' else '0'; 
+
+	-- reu uses the iec cycle (mutually exclusive with io-controller access)
+	reu_cycle <= '1' when ces ="1011" else '0';
 
 	sd_sdhc <= '1';
 	sd_conf <= '0';
@@ -583,6 +615,7 @@ begin
 		mouse_strobe => mouse_strobe
 	);
 
+	st_reu              <= status(22 downto 20);
 	st_tape_progress    <= status(19);
 	st_tape_sound       <= status(18);
 	st_tap_play_btn     <= status(17);
@@ -671,16 +704,6 @@ begin
 	joyA_c64 <= joyB_int when st_swap_joystick='1' else joyA_int;
 	joyB_c64 <= joyA_int when st_swap_joystick='1' else joyB_int;
 
-	sdram_addr <= std_logic_vector(unsigned(C64_ROM_START) + c64_rom_addr) when mist_cycle = '0' and rom_ce = '0' else
-	              c64_addr_temp when mist_cycle='0' else
-	              ioctl_ram_addr when prg_reg_update = '1' or ioctl_download = '1' or erasing = '1' else
-	              tap_play_addr;
-	sdram_data_out <= c64_data_out when mist_cycle='0' else ioctl_ram_data;
-
-	-- ram_we and rom_ce are active low
-	sdram_ce <= (mem_ce or not rom_ce) when mist_cycle='0' else mist_cycle_wr or tap_mem_ce;
-	sdram_we <= not ram_we when mist_cycle='0' else mist_cycle_wr;
-
 	process(clk_c64)
 	begin
 		if rising_edge(clk_c64) then
@@ -712,6 +735,8 @@ begin
 			end if;
 
 			if ioctl_wr='1' then
+				ioctl_bs <= "01"; -- everything in the low half, except REU
+
 				if ioctl_index = FILE_BOOT or ioctl_index = FILE_ROM then
 					if ioctl_addr = 0 then
 						ioctl_load_addr <= C64_ROM_START;
@@ -726,7 +751,7 @@ begin
 						ioctl_load_addr(7 downto 0) <= ioctl_data;
 						prg_start(7 downto 0) <= ioctl_data;
 					elsif(ioctl_addr = 1) then
-						ioctl_load_addr(24 downto 8) <= '0'&x"00"&ioctl_data;
+						ioctl_load_addr(23 downto 8) <= x"00"&ioctl_data;
 						prg_start(15 downto 8) <= ioctl_data;
 					else
 						ioctl_ram_wr <= '1';
@@ -751,7 +776,7 @@ begin
 							if ioctl_load_addr(12 downto 0) /= 0 then
 							   -- align to 8KB boundary
 								ioctl_load_addr(12 downto 0) <= '0' & X"000";
-								ioctl_load_addr(24 downto 13) <= ioctl_load_addr(24 downto 13) + "1";
+								ioctl_load_addr(23 downto 13) <= ioctl_load_addr(23 downto 13) + "1";
 							end if;
 						elsif cart_hdr_cnt /= 0 then
 							cart_hdr_cnt <= cart_hdr_cnt + "1";
@@ -783,6 +808,15 @@ begin
 					ioctl_ram_wr <= '1';
 				end if;
 
+				if ioctl_index = FILE_REU then
+					ioctl_bs <= "10";
+					if ioctl_addr = 0 then
+						ioctl_load_addr <= (others => '0');
+						ioctl_ram_data <= ioctl_data;
+					end if;
+					ioctl_ram_wr <= '1';
+				end if;
+
 			end if;
 
 			-- PRG download finished, start updating system variables
@@ -794,6 +828,7 @@ begin
 
 			-- PRG system variable updating control
 			if prg_reg_update = '1' and mist_cycle = '1' and mist_cycleD = '1' then
+				ioctl_bs <= "01";
 				case ioctl_load_addr(7 downto 0) is
 				when x"2b"|x"ac" => prg_data <= prg_start(7 downto 0); ioctl_ram_wr <= '1';
 				when x"2c"|x"ad" => prg_data <= prg_start(15 downto 8); ioctl_ram_wr <= '1';
@@ -827,18 +862,19 @@ begin
 
 			-- RAM erasing control
 			if erasing = '1' and mist_cycle = '1' and mist_cycleD = '1' then
-					-- erase up to 0xFFFF
-					if ioctl_load_addr(16 downto 0) = '1'&x"0000" then
-						if ioctl_load_addr < CRT_MEM_START and erase_cartram = '1' then
-							ioctl_load_addr <= CRT_MEM_START;
-							ioctl_ram_wr <= '1';
-						else
-							erasing <= '0';
-							erase_cartram <= '0';
-						end if;
-					else
+				ioctl_bs <= "01";
+				-- erase up to 0xFFFF
+				if ioctl_load_addr(16 downto 0) = '1'&x"0000" then
+					if ioctl_load_addr < CRT_MEM_START and erase_cartram = '1' then
+						ioctl_load_addr <= CRT_MEM_START;
 						ioctl_ram_wr <= '1';
+					else
+						erasing <= '0';
+						erase_cartram <= '0';
 					end if;
+				else
+					ioctl_ram_wr <= '1';
+				end if;
 			end if;
 
 		end if;
@@ -1009,11 +1045,70 @@ begin
 		end if;
 	end process;
 
-	-- clock is always enabled and memory is never masked as we only
-	-- use one byte
+	-- reu
+	reu_din <= c64_data_out;
+	reu_enable <= '0' when st_reu = "000" or cart_attached = '1' else '1';
+
+	with st_reu select reu_rommask <=
+		"00000" when "001",
+		"00001" when "010",
+		"00011" when "011",
+		"00111" when "100",
+		"01111" when "101",
+		"11111" when others;
+
+	reu: work.reu port map(
+		clock    => clk_c64,
+		reset    => not reset_n,
+		enable   => reu_enable,
+		rommask  => reu_rommask,
+		-- expansion port
+		phi      => phi,
+		ba       => c64_ba,
+		dma_n    => dma_n,
+		iof      => IOF,
+		addr     => c64_addr,
+		rnw      => c64_rnw,
+		irq_n    => reu_irq_n, -- useless, but implemented anyway
+		din      => reu_din,
+		dout     => reu_dout,
+		addr_out => reu_addr,
+		rnw_out  => reu_rnw,
+		oe       => reu_oe,
+
+		-- REU RAM interface
+		ram_addr => reu_ram_addr,
+		ram_ce   => reu_ram_ce,
+		ram_we   => reu_ram_we,
+		ram_di   => reu_ram_di,
+		ram_do   => reu_ram_do
+	);
+
+	-- sdram
+	sdram_addr <= std_logic_vector(unsigned(C64_ROM_START) + c64_rom_addr) when mist_cycle = '0' and rom_ce = '0' else
+	              c64_addr_temp when mist_cycle='0' else
+				  reu_ram_addr when reu_cycle='1' and reu_ram_ce='1' else
+	              ioctl_ram_addr when prg_reg_update = '1' or ioctl_download = '1' or erasing = '1' else
+	              tap_play_addr;
+	sdram_bs <= "10" when reu_ram_ce='1' and reu_cycle='1' else
+	            ioctl_bs when mist_cycle_wr = '1' and mist_cycle = '1' else
+	            "01";
+	sdram_data_in( 7 downto 0) <= c64_ram_dout when mist_cycle='0' else ioctl_ram_data;
+	sdram_data_in(15 downto 8) <= ioctl_ram_data when mist_cycle = '1' and mist_cycle_wr = '1' else reu_ram_do;
+	c64_data_in <= reu_dout when reu_oe = '1' else sdram_data_out(7 downto 0);
+	c64_ram_din <= sdram_data_out(7 downto 0);
+
+	reu_ram_di <= sdram_data_out(15 downto 8);
+
+	-- ram_we and rom_ce are active low
+	sdram_ce <= (mem_ce or not rom_ce) when mist_cycle='0' else  -- normal access to C64 RAM
+	             '1' when reu_ram_ce='1' and reu_cycle='1' else  -- REU access to REU RAM
+	             mist_cycle_wr or tap_mem_ce;                    -- IO-Controller/TAP player access
+	sdram_we <= not ram_we when mist_cycle = '0' else
+	            reu_ram_we when reu_ram_ce = '1' and reu_cycle = '1' else
+	            mist_cycle_wr;
+
 	SDRAM_CKE <= '1';
-	SDRAM_DQML <= '0';
-	SDRAM_DQMH <= '0';
 
 	sdr: sdram port map(
 		sd_addr => SDRAM_A,
@@ -1023,11 +1118,14 @@ begin
 		sd_we => SDRAM_nWE,
 		sd_ras => SDRAM_nRAS,
 		sd_cas => SDRAM_nCAS,
+		sd_dqml => SDRAM_DQML,
+		sd_dqmh => SDRAM_DQMH,
 
 		clk => clk_ram,
 		addr => sdram_addr,
-		din => sdram_data_out,
-		dout => c64_data_in,
+		din => sdram_data_in,
+		dout => sdram_data_out,
+		bs => sdram_bs,
 		init => not pll_locked,
 		we => sdram_we,
 		refresh => idle,
@@ -1054,36 +1152,44 @@ begin
 		turbo_sel => st_turbo,
 		kbd_clk => not ps2_clk,
 		kbd_dat => ps2_dat,
-		ramAddr => c64_addr_int,
-		ramDataOut => c64_data_out_int,
-		ramDataIn => c64_data_in_int,
+
+		std_logic_vector(ramAddr) => c64_addr,
+		std_logic_vector(ramDataOut) => c64_ram_dout,
+		ramDataIn => unsigned(c64_ram_din),
 		ramCE => ram_ce,
 		ramWe => ram_we,
 		romAddr => c64_rom_addr,
 		romCE => rom_ce,
+
 		ntscInitMode => ntsc_init_mode,
 		hsync => hsync,
 		vsync => vsync,
 		r => r,
 		g => g,
 		b => b,
+		phi => phi,
+		rnw_o => c64_rnw,
+		addr_i => unsigned(reu_addr),
+		rnw_i => reu_rnw,
+		din => unsigned(c64_data_in),
+		std_logic_vector(dout) => c64_data_out,
 		game => game,
 		exrom => exrom,
 		UMAXromH => UMAXromH,
 		CPU_hasbus => CPU_hasbus,		
 		ioE_rom => ioE_rom,
-		ioF_rom => ioF_rom,
+		ioF_rom => ioF_rom or reu_oe,
 		max_ram => max_ram,
-		irq_n => '1',
+		irq_n => reu_irq_n,
 		nmi_n => not nmi,
 		nmi_ack => nmi_ack,
 		freeze_key => freeze_key,
-		dma_n => '1',
+		dma_n => dma_n,
 		romL => romL,
 		romH => romH,
 		IOE => IOE,									
 		IOF => IOF,
-		ba => open,
+		ba => c64_ba,
 		joyA => unsigned(joyA_c64),
 		joyB => unsigned(joyB_c64),
 		potA_x => potA_x,
@@ -1315,7 +1421,7 @@ begin
 		restart_tape => tap_reset,
 		wav_mode => '0',
 		tap_version => tap_version,
-		host_tap_in => c64_data_in,
+		host_tap_in => sdram_data_out(7 downto 0),
 		host_tap_wrreq => tap_wrreq,
 		tap_fifo_wrfull => tap_wrfull,
 		tap_fifo_error => tap_fifo_error,		
@@ -1342,8 +1448,8 @@ begin
 		hblank => hblank,
 		vblank => vblank,
 		enable => not cass_run and st_tape_progress,
-		current => unsigned(tap_play_addr-TAP_MEM_START),
-		max => unsigned(tap_last_addr-TAP_MEM_START),
+		current => '0'&unsigned(tap_play_addr-TAP_MEM_START),
+		max => '0'&unsigned(tap_last_addr-TAP_MEM_START),
 		pix => progress
 	);
 
