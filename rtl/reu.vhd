@@ -194,7 +194,7 @@ begin
 					end if;
 
 				when write_c64 =>
-					if phi = '1' and phi_cnt = 0 then
+					if phi = '0' then
 						if ba_reg = '0' then
 							dma_n <= '1';
 						else
@@ -222,7 +222,7 @@ begin
 
 				when read_c64 =>
 					rnw_out <= '1';
-					if phi = '1' and phi_cnt = 0 then
+					if phi = '0' then
 						if ba_reg = '0' then
 							dma_n <= '1';
 						else
