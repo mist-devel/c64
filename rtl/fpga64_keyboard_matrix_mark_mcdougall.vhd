@@ -448,10 +448,14 @@ begin
 					when X"6C" => key_home <= not releaseFlag; 
 					when X"66" => key_del <= not releaseFlag; 
 					when X"70" => if extendedFlag = '0' then joyKeys(4) <= not releaseFlag; end if;
+					when X"71" => if extendedFlag = '0' then key_dot <= not releaseFlag; end if;
 					when X"72" => if extendedFlag = '0' then joyKeys(1) <= not releaseFlag; else key_down <= not releaseFlag; end if;
 					when X"74" => if extendedFlag = '0' then joyKeys(3) <= not releaseFlag; else key_right <= not releaseFlag; end if;
 					when X"75" => if extendedFlag = '0' then joyKeys(0) <= not releaseFlag; else key_up <= not releaseFlag; end if;
 					when X"76" => key_runstop <= not releaseFlag;
+					when X"79" => if extendedFlag = '0' then key_plus <= not releaseFlag; end if;
+					when X"7B" => if extendedFlag = '0' then key_minus <= not releaseFlag; end if;
+					when X"7C" => if extendedFlag = '0' then key_star <= not releaseFlag; end if;
 					when X"7D" => if extendedFlag = '1' then tapPlayStopKey <= not releaseFlag; end if; -- pg up
 					when others => null;
 					end case;
