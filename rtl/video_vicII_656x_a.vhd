@@ -585,8 +585,10 @@ vicStateMachine: process(clk)
 				if vicCycle = cycleRefresh1 then
 					baSprite37 <= '1';
 				end if;
-				
-				if MDMA_next(0) and (vicCycle = cycleCalcSprites) then
+
+				if MDMA_next(0) and (vicCycle = cycleCalcSprites) and (MDMA(0) or enaPixel = '1') then
+					-- BA is delayed for Sprite 0's first line
+					-- we just delay it for one master clock cycle, enough for REU to correctly (not) act on this
 					baSprite04 <= '0';
 				end if;
 				if MDMA(1) and (vicCycle = cycleSpriteBa2) then

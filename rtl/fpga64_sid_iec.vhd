@@ -403,7 +403,7 @@ begin
 	end process;
 
 	cpuHasBus <= '1' when turbo = '1' or
-	                      (dma_n = '0' and phi0_cpu = '1') or -- dma access counts as CPU access in this context
+	                      (dma_n = '0' and phi0_cpu = '1' and aecVic = '1') or -- dma access counts as CPU access in this context
 	                      (aecLoc = '1' and (baLoc = '1' or cpuWe = '1')) else '0';
 
 	turbo_reg_en <= '1' when turbo_sel = "01" else '0';

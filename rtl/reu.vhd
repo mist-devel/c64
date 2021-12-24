@@ -25,7 +25,7 @@ port (
 
 	-- REU RAM interface
 	ram_addr    : out std_logic_vector(23 downto 0);
-	ram_ce      : buffer std_logic;
+	ram_ce      : out std_logic;
 	ram_we      : out std_logic;
 	ram_di      : in  std_logic_vector( 7 downto 0);
 	ram_do      : out std_logic_vector( 7 downto 0)
@@ -42,6 +42,7 @@ architecture rtl of reu is
 	signal phi_cnt: unsigned(3 downto 0);
 	signal reu_cs: std_logic;
 	signal ba_reg: std_logic;
+	signal ba_reg2: std_logic;
 
 	signal load: std_logic;
 	signal ff00: std_logic;
@@ -88,11 +89,17 @@ begin
 
 	reu_cs <= '1' when phi = '1' and iof = '1' and enable = '1' and state = idle else '0';
 
-	-- to make some timing tests happy
+	-- to make some timing tests (and Treu Love) happy
 	process(clock) begin
 		if rising_edge(clock) then
-			if phi_fall = '1' then ba_reg <= ba; end if;
-			if ba = '1' then ba_reg <= '1'; end if;
+			if phi = '0' and phi_cnt = 1 then
+				ba_reg <= ba;
+				ba_reg2 <= ba_reg;
+			end if;
+			if ba = '1' then
+				ba_reg <= '1';
+				ba_reg2 <= '1';
+			end if;
 		end if;
 	end process;
 
@@ -133,13 +140,13 @@ begin
 						c64_addr <= din & c64_start_addr(7 downto  0);
 					when x"4" =>
 						reu_start_addr( 7 downto  0) <= din;
-						reu_addr(15 downto  0) <= (reu_start_addr(15 downto 8) & din);
+						reu_addr(15 downto  0) <= reu_start_addr(15 downto 8) & din;
 					when x"5" =>
 						reu_start_addr(15 downto  8) <= din;
 						reu_addr(15 downto  0) <= din & reu_start_addr(7 downto 0);
 					when x"6" =>
 						reu_start_addr(23 downto 16) <= din and rommask&"111";
-						reu_addr(23 downto 16) <= (din and rommask&"111");
+						reu_addr(23 downto 16) <= din and rommask&"111";
 					when x"7" =>
 						transfer_len_base( 7 downto  0) <= din;
 						transfer_len <= transfer_len_base(15 downto 8) & din;
@@ -195,10 +202,7 @@ begin
 
 				when write_c64 =>
 					if phi = '0' then
-						if ba_reg = '0' then
-							dma_n <= '1';
-						else
-							dma_n <= '0';
+						if ba_reg2 = '1' then
 							state <= write_c64_do;
 						end if;
 					end if;
@@ -223,10 +227,7 @@ begin
 				when read_c64 =>
 					rnw_out <= '1';
 					if phi = '0' then
-						if ba_reg = '0' then
-							dma_n <= '1';
-						else
-							dma_n <= '0';
+						if ba_reg2 = '1' then
 							state <= read_c64_do;
 						end if;
 					end if;
@@ -280,17 +281,19 @@ begin
 					end if;
 
 				when finished =>
-					dma_n <= '1';
-					ff00 <= '1';
-					if not (verify_error = '1' and transfer_len /= x"0001") then
-						transfer_end <= '1';
-						if load = '1' then
-							c64_addr <= c64_start_addr;
-							reu_addr <= reu_start_addr and (rommask & "111" & x"FFFF");
-							transfer_len <= transfer_len_base;
+					if phi = '0' and phi_cnt = 0 and ba = '1' then
+						dma_n <= '1';
+						ff00 <= '1';
+						if not (verify_error = '1' and transfer_len /= x"0001") then
+							transfer_end <= '1';
+							if load = '1' then
+								c64_addr <= c64_start_addr;
+								reu_addr <= reu_start_addr and (rommask & "111" & x"FFFF");
+								transfer_len <= transfer_len_base;
+							end if;
 						end if;
+						state <= idle;
 					end if;
-					state <= idle;
 			end case;
 		end if;
 	end process;
