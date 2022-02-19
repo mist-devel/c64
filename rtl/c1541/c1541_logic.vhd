@@ -85,6 +85,8 @@ architecture SYN of c1541_logic is
   signal uc1_irq_n      : std_logic;
   signal uc1_ca1_i      : std_logic;
   signal uc1_pa_i       : std_logic_vector(7 downto 0);
+  signal uc1_pa_o       : std_logic_vector(7 downto 0);
+  signal uc1_pa_oe_n    : std_logic_vector(7 downto 0);
   signal uc1_pb_i       : std_logic_vector(7 downto 0);
   signal uc1_pb_o       : std_logic_vector(7 downto 0);
   signal uc1_pb_oe_n    : std_logic_vector(7 downto 0);
@@ -112,6 +114,7 @@ architecture SYN of c1541_logic is
   signal atn            : std_logic; -- attention
   signal soe            : std_logic; -- set overflow enable
   
+  signal uc1_pa_oe      : std_logic_vector(7 downto 0);
   signal uc1_pb_oe      : std_logic_vector(7 downto 0);
   signal uc1_irq        : std_logic;
   signal uc3_irq        : std_logic;
@@ -169,8 +172,8 @@ begin
   -- CA1
   uc1_ca1_i <= not sb_atn_in;
   -- PA
-  uc1_pa_i(0) <= tr00_sense_n;
-  uc1_pa_i(7 downto 1) <= (others => '1');  -- NC
+  uc1_pa_i(0) <= (uc1_pa_o(0) or uc1_pa_oe_n(0)) and tr00_sense_n;
+  uc1_pa_i(7 downto 1) <= uc1_pa_oe_n(7 downto 1) or uc1_pa_o(7 downto 1);  -- NC, but reads output when set to output
 
   -- PB
   uc1_pb_i(0) <=  not (sb_data_in and sb_data_oe);
@@ -291,6 +294,7 @@ begin
       q         => ram_do
     );
 
+  uc1_pa_oe_n <= not uc1_pa_oe;
   uc1_pb_oe_n <= not uc1_pb_oe;
   uc1_irq_n   <= not uc1_irq;
 
@@ -309,6 +313,8 @@ begin
       data_out        => uc1_do,
 
       port_a_i        => uc1_pa_i,
+      port_a_t        => uc1_pa_oe,
+      port_a_o        => uc1_pa_o,
 
       port_b_o        => uc1_pb_o,
       port_b_t        => uc1_pb_oe,
