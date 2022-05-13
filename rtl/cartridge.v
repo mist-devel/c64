@@ -496,6 +496,20 @@ always @(posedge clk32) begin
 				end
 			end
 
+		// prophet64
+		43: begin
+				if(!init_n) begin
+					exrom_overide <= 0;
+					game_overide  <= 1;
+					bank_lo       <= 0;
+					init_n        <= 1;
+				end
+				else if(iof_wr) begin
+					bank_lo       <= c64_data_out[4:0];
+					exrom_overide <= c64_data_out[5];
+				end
+			end
+
 		// Kingsoft Business Basic
 		54: begin
 				max_ram <= 1;
