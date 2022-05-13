@@ -121,6 +121,7 @@ always @(posedge clk32) begin
 	old_nmiack <= nmi_ack;
 	if(freeze_ack) nmi <= 0;
 
+	init_n <= 1;
 	if(!reset) begin
 		cart_disable <= 0;
 		bank_lo <= 0;
@@ -167,7 +168,6 @@ always @(posedge clk32) begin
 					IOF_wr_ena <= 0;
 					IOF_ena <= 1;
 					if(~init_n) begin
-						init_n <= 1;
 						exrom_overide <= 0;
 						game_overide  <= 1;
 					end
@@ -205,7 +205,6 @@ always @(posedge clk32) begin
 		// all banks @ $8000-$BFFF - switching by $DFFF
 		3:	begin
 				if(!init_n) begin
-					init_n <= 1;
 					game_overide <= 0;
 					exrom_overide<= 0;
 					cart_disable <= 0;
@@ -242,7 +241,6 @@ always @(posedge clk32) begin
 		// Write to IOE switches 16k config
 		4: begin
 				if(!init_n) begin
-					init_n <= 1;
 					exrom_overide <= 0;
 					game_overide <= 0;
 					bank_lo <= 0;
@@ -267,7 +265,6 @@ always @(posedge clk32) begin
 		// PowerPlay, FunPlay
 		7:	begin
 				if(~init_n) begin
-					init_n <= 1;
 					exrom_overide <= 0;
 					game_overide  <= 1;
 				end
@@ -282,7 +279,6 @@ always @(posedge clk32) begin
 		// "Super Games"
 		8:	begin
 				if(~init_n) begin
-					init_n <= 1;
 					exrom_overide <= 0;
 					game_overide  <= 0;
 					bank_lo <= 0;
@@ -306,7 +302,6 @@ always @(posedge clk32) begin
 				if(IOE || romL) count_ena <= 1;
 
 				if(!init_n || IOE || romL) begin
-					init_n <= 1;
 					game_overide  <= 1;
 					exrom_overide <= 0;
 					count <= 16384;
@@ -324,8 +319,6 @@ always @(posedge clk32) begin
 		// 16k rom - IOE turns off rom / IOF turns rom on
 		13: begin
 				if(!init_n) begin
-					init_n <= 1;
-
 					bank_lo <= 0;
 					bank_hi <= 1;
 					game_overide  <= 0;
@@ -384,7 +377,6 @@ always @(posedge clk32) begin
 		// Magic Desk - (game=1, exrom=0 = 4/8/16 8k banks)
 		19: begin
 				if(!init_n) begin
-					init_n <= 1;
 					game_overide  <= 1;
 					exrom_overide <= 0;
 					bank_lo <= 0;
@@ -399,7 +391,6 @@ always @(posedge clk32) begin
 		// Super Snapshot v5 -(64k rom 8*8k banks/4*16k banks, 32k ram 4*8k banks)
 		20: begin
 				if(!init_n || freeze_ack) begin
-					init_n  <= 1;
 					romL_we <= 1;
 					bank_lo <= 0;
 					bank_hi <= 1;
@@ -428,7 +419,6 @@ always @(posedge clk32) begin
 		// Comal80 - (game=0, exrom=0, 4 banks by 16k)
 		21: begin
 			if(!init_n) begin
-				init_n <= 1;
 				bank_lo <= 0;
 				bank_hi <= 1;
 				game_overide  <= 0;
@@ -474,7 +464,6 @@ always @(posedge clk32) begin
 		32,
 		33: begin
 				if(!init_n) begin
-					init_n <= 1;
 					IOF_bank<= 0;
 					IOF_ena <= 1;
 					IOF_wr_ena <= 1;
@@ -502,7 +491,6 @@ always @(posedge clk32) begin
 					exrom_overide <= 0;
 					game_overide  <= 1;
 					bank_lo       <= 0;
-					init_n        <= 1;
 				end
 				else if(iof_wr) begin
 					bank_lo       <= c64_data_out[4:0];
@@ -515,7 +503,6 @@ always @(posedge clk32) begin
 				max_ram <= 1;
 
 				if(!init_n || ioe_rd) begin
-					init_n <= 1;
 					game_overide  <= 0;
 					exrom_overide <= 0;
 					bank_lo <= 0;
@@ -533,7 +520,6 @@ always @(posedge clk32) begin
 		// RGCD (game=1, exrom=0, 8 banks by 8k)
 		57: begin
 				if(!init_n) begin
-					init_n <= 1;
 					game_overide  <= 1;
 					exrom_overide <= 0;
 					bank_lo <= 0;
