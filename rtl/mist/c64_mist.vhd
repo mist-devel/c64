@@ -232,6 +232,7 @@ component cartridge port
 	IOE_ena     : out std_logic;
 	IOF_ena     : out std_logic;
 	max_ram     : out std_logic;
+	ext_sid_cs  : out std_logic;
 	freeze_key  : in  std_logic;
 	nmi         : out std_logic;
 	nmi_ack     : in  std_logic
@@ -348,7 +349,8 @@ end component progressbar;
 	signal romL				: std_logic;													-- cart romL from buslogic LCA
 	signal romH				: std_logic;													-- cart romH from buslogic LCA
 	signal UMAXromH		: std_logic;													-- VIC II Ultimax access - LCA
-	
+	signal ext_sid_cs   : std_logic;
+
 	signal CPU_hasbus		: std_logic;
 	signal c64_ba        : std_logic;
 	signal c1541rom_wr   : std_logic;
@@ -689,6 +691,7 @@ begin
 		IOE_ena => ioE_rom,
 		IOF_ena => ioF_rom,
 		max_ram => max_ram,
+		ext_sid_cs => ext_sid_cs,
 		freeze_key => freeze_key,
 		nmi => nmi,
 		nmi_ack => nmi_ack
@@ -1179,6 +1182,7 @@ begin
 		CPU_hasbus => CPU_hasbus,		
 		ioE_rom => ioE_rom,
 		ioF_rom => ioF_rom or reu_oe,
+		ext_sid_cs => ext_sid_cs,
 		max_ram => max_ram,
 		irq_n => reu_irq_n,
 		nmi_n => not nmi,

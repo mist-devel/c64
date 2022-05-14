@@ -37,6 +37,8 @@ module cartridge
 	output reg    IOF_ena,					// FLAG to enable IOF address relocation
 	output reg    max_ram,              // Enable whole C64 RAM in Ultimax mode
 
+	output reg    ext_sid_cs,           // Cart has a SID
+
 	input         freeze_key,
 	output reg    nmi,
 	input         nmi_ack
@@ -122,6 +124,8 @@ always @(posedge clk32) begin
 	if(freeze_ack) nmi <= 0;
 
 	init_n <= 1;
+	ext_sid_cs <= 0;
+
 	if(!reset) begin
 		cart_disable <= 0;
 		bank_lo <= 0;
@@ -496,6 +500,7 @@ always @(posedge clk32) begin
 					bank_lo       <= c64_data_out[4:0];
 					exrom_overide <= c64_data_out[5];
 				end
+				ext_sid_cs <= IOE;
 			end
 
 		// Kingsoft Business Basic

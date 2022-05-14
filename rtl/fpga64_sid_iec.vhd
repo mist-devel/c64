@@ -76,9 +76,10 @@ entity fpga64_sid_iec is
 		dout        : out unsigned( 7 downto 0);
 		game        : in  std_logic;
 		exrom       : in  std_logic;
-		ioE_rom     : in std_logic;
-		ioF_rom     : in std_logic;
-		max_ram     : in std_logic;
+		ioE_rom     : in  std_logic;
+		ioF_rom     : in  std_logic;
+		ext_sid_cs  : in  std_logic;
+		max_ram     : in  std_logic;
 		irq_n       : inout std_logic;
 		nmi_n       : in  std_logic;
 		nmi_ack     : out std_logic;
@@ -506,6 +507,7 @@ begin
 		ioE_rom => ioE_rom,
 		ioF_rom => ioF_rom,
 		max_ram => max_ram,
+		ext_sid_cs => ext_sid_cs,
 
 		ramData => ramDataIn,
 --		ioF_ext => ioF_ext,
@@ -677,6 +679,7 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	second_sid_en <= '0' when sid_mode(0) = '0' else
 	                 '1' when busAddr(11 downto 8) = x"4" and busAddr(5) = '1' else -- D420
 	                 '1' when busAddr(11 downto 8) = x"5" else -- D500
+	                 '1' when ext_sid_cs = '1' else
 	                 '0';
 
 	sid_6581: entity work.sid_top
@@ -688,7 +691,7 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 		reset => reset,
 
 		addr => second_sid_en & "00" & busAddr(4 downto 0),
-		wren => pulseWrRam and phi0_cpu and cs_sid,
+		wren => pulseWrRam and phi0_cpu and (cs_sid or ext_sid_cs),
 		wdata => std_logic_vector(busDo),
 		rdata => sid_do6581,
 
@@ -726,7 +729,7 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 		reset => reset,
 		clk32 => clk32,
 		clk_1MHz => clk_1MHz(31),
-		cs => cs_sid and second_sid_en,
+		cs => (cs_sid or ext_sid_cs) and second_sid_en,
 		we => pulseWrRam and phi0_cpu,
 		addr => std_logic_vector(busAddr(4 downto 0)),
 		data_in => std_logic_vector(busDo),

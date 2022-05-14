@@ -42,6 +42,7 @@ entity fpga64_buslogic is
 		ioE_rom : in std_logic;
 		ioF_rom : in std_logic;
 		max_ram : in std_logic;
+		ext_sid_cs : in std_logic;
 
 		busWe: in std_logic;
 		busAddr: in unsigned(15 downto 0);
@@ -144,7 +145,7 @@ begin
 			dataToCpu <= ramData;
 		elsif cs_vicReg = '1' then
 			dataToCpu <= vicData;
-		elsif cs_sidReg = '1' then
+		elsif cs_sidReg = '1' or ext_sid_cs = '1' then
 			dataToCpu <= sidData;
 		elsif cs_colorReg = '1' then
 			dataToCpu(3 downto 0) <= colorData;
