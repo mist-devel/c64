@@ -130,7 +130,7 @@ begin
 	process(ramData, vicData, sidData, colorData,
            cia1Data, cia2Data, charData, romData, busData,
 			  cs_romHReg, cs_romLReg, cs_romReg, cs_CharReg,
-			  cs_ramReg, cs_vicReg, cs_sidReg, cs_colorReg,
+			  cs_ramReg, cs_vicReg, cs_sidReg, ext_sid_cs, cs_colorReg,
 			  cs_cia1Reg, cs_cia2Reg, lastVicData,
 			  cs_ioEReg, cs_ioFReg, ioE_rom, ioF_rom)
 	begin
