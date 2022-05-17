@@ -122,6 +122,7 @@ constant CONF_STR : string :=
 	"P1OJ,Tape progress,Off,On;"&
 	"P1ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
 	"P1O6,Audio filter,On,Off;"&
+	"P1ONP,Midi,Off,Sequential Inc.,Passport/Sentech,DATEL/SIEL/JMS/C-LAB,Namesoft;"&
 	"P2O3,Joysticks,Normal,Swapped;"&
 	"P2OG,Disk Write,Enable,Disable;"&
 	"P2O7,Userport,4-player IF,UART;"&
@@ -355,6 +356,14 @@ end component progressbar;
 	signal c64_ba        : std_logic;
 	signal c1541rom_wr   : std_logic;
 
+	-- midi signals
+	signal midi_data     : std_logic_vector(7 downto 0);
+	signal midi_oe       : std_logic;
+	signal midi_irq_n    : std_logic;
+	signal midi_nmi_n    : std_logic;
+	signal midi_rx       : std_logic;
+	signal midi_tx       : std_logic;
+
 	signal joyA : std_logic_vector(31 downto 0);
 	signal joyB : std_logic_vector(31 downto 0);
 	signal joyC : std_logic_vector(31 downto 0);
@@ -381,6 +390,7 @@ end component progressbar;
 	signal status         : std_logic_vector(63 downto 0);
   
 	-- status(1) and status(12) are not used
+	signal st_midi             : std_logic_vector(2 downto 0); -- status(23 downto 25)
 	signal st_reu              : std_logic_vector(2 downto 0); -- status(22 downto 20)
 	signal st_tape_progress    : std_logic;                    -- status(19)
 	signal st_tape_sound       : std_logic;                    -- status(18)
@@ -489,6 +499,7 @@ end component progressbar;
 	signal cass_sense  : std_logic;
 	signal cass_read   : std_logic;
 	signal cass_run    : std_logic;
+	signal ear_input   : std_logic;
 	
 	signal tap_mem_ce     : std_logic;
 	signal tap_mem_ce_res : std_logic;
@@ -617,6 +628,7 @@ begin
 		mouse_strobe => mouse_strobe
 	);
 
+	st_midi             <= status(25 downto 23);
 	st_reu              <= status(22 downto 20);
 	st_tape_progress    <= status(19);
 	st_tape_sound       <= status(18);
@@ -695,6 +707,25 @@ begin
 		freeze_key => freeze_key,
 		nmi => nmi,
 		nmi_ack => nmi_ack
+	);
+
+	midi : entity work.c64_midi
+	port map (
+		clk32   => clk_c64,
+		reset   => not reset_n,
+		Mode    => st_midi,
+		E       => phi,
+		IOE     => IOE,
+		A       => c64_addr,
+		Din     => c64_data_out,
+		Dout    => midi_data,
+		OE      => midi_oe,
+		RnW     => c64_rnw,
+		nIRQ    => midi_irq_n,
+		nNMI    => midi_nmi_n,
+
+		RX      => midi_rx,
+		TX      => midi_tx
 	);
 
 	-- rearrange joystick contacta for c64
@@ -1098,7 +1129,7 @@ begin
 	            "01";
 	sdram_data_in( 7 downto 0) <= c64_ram_dout when mist_cycle='0' else ioctl_ram_data;
 	sdram_data_in(15 downto 8) <= ioctl_ram_data when mist_cycle = '1' and mist_cycle_wr = '1' else reu_ram_do;
-	c64_data_in <= reu_dout when reu_oe = '1' else sdram_data_out(7 downto 0);
+	c64_data_in <= reu_dout when reu_oe = '1' else midi_data when midi_oe = '1' else sdram_data_out(7 downto 0);
 	c64_ram_din <= sdram_data_out(7 downto 0);
 
 	reu_ram_di <= sdram_data_out(15 downto 8);
@@ -1180,12 +1211,12 @@ begin
 		exrom => exrom,
 		UMAXromH => UMAXromH,
 		CPU_hasbus => CPU_hasbus,		
-		ioE_rom => ioE_rom,
+		ioE_rom => ioE_rom or midi_oe,
 		ioF_rom => ioF_rom or reu_oe,
 		ext_sid_cs => ext_sid_cs,
 		max_ram => max_ram,
-		irq_n => reu_irq_n,
-		nmi_n => not nmi,
+		irq_n => reu_irq_n and midi_irq_n,
+		nmi_n => not nmi and midi_nmi_n,
 		nmi_ack => nmi_ack,
 		freeze_key => freeze_key,
 		dma_n => dma_n,
@@ -1268,7 +1299,7 @@ begin
 	end process;
 
 	-- connect user port
-	process (pa2_out, pb_out, joyC_c64, joyD_c64, uart_rxD2, st_user_port_uart, cass_motor)
+	process (pa2_out, pb_out, joyC_c64, joyD_c64, uart_rxD2, st_user_port_uart, cass_motor, st_midi, midi_tx)
 	begin
 		pa2_in <= pa2_out;
 		if st_user_port_uart = '0' then
@@ -1290,7 +1321,13 @@ begin
 			pb_in(0) <= uart_rxD2;
 			UART_TX <= pa2_out;
 		end if;
+		if st_midi /= "000" then
+			UART_TX <= midi_tx;
+		end if;
 	end process;
+
+	ear_input <= uart_rxD2 when st_user_port_uart = '0' and st_midi = "000" else '1';
+	midi_rx <= uart_rxD2 when st_midi /= "000" else '1';
 
 	-- generate TOD clock from stable 32 MHz
 	process(clk32, reset_n)
@@ -1435,7 +1472,7 @@ begin
 		cass_sense => cass_sense,
 		cass_run => cass_run,
 		osd_play_stop_toggle => st_tap_play_btn or tap_playstop_key,
-		ear_input => uart_rxD2 and not st_user_port_uart
+		ear_input => ear_input
 	);
 
 	process(clk_c64)
