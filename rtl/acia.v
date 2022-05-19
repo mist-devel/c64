@@ -78,6 +78,7 @@ reg serial_in_filtered;
 always @(posedge clk) begin
 	if(reset) begin
 		serial_rx_cnt <= 8'd0;
+		serial_rx_data <= 8'hFF;
 		serial_rx_data_available <= 1'b0;
 		serial_rx_filter <= 4'b1111;
 		serial_in_filtered <= 1'b1;
@@ -94,6 +95,7 @@ always @(posedge clk) begin
 		// serial acia master reset
 		if(serial_cr[1:0] == 2'b11) begin
 			serial_rx_cnt <= 8'd0;
+			serial_rx_data <= 8'hFF;
 			serial_rx_data_available <= 1'b0;
 			serial_rx_filter <= 4'b1111;
 			serial_rx_overrun <= 1'b0;

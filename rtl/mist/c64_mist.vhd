@@ -1211,7 +1211,7 @@ begin
 		exrom => exrom,
 		UMAXromH => UMAXromH,
 		CPU_hasbus => CPU_hasbus,		
-		ioE_rom => ioE_rom,
+		ioE_rom => ioE_rom or midi_oe,
 		ioF_rom => ioF_rom or reu_oe,
 		ext_sid_cs => ext_sid_cs,
 		max_ram => max_ram,
