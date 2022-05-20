@@ -713,6 +713,7 @@ begin
 	port map (
 		clk32   => clk_c64,
 		reset   => not reset_n,
+		rxtxclk => clk32,
 		Mode    => st_midi,
 		E       => phi,
 		IOE     => IOE,

@@ -18,6 +18,7 @@ entity c64_midi is
 port(
 	clk32   : in  std_logic;
 	reset   : in  std_logic;
+	rxtxclk : in  std_logic;
 	Mode    : in  std_logic_vector( 2 downto 0);
 	E       : in  std_logic;
 	IOE     : in  std_logic;
@@ -39,18 +40,19 @@ architecture rtl of c64_midi is
 component acia is
 port
 (
-	clk   : in  std_logic;
-	E     : in  std_logic;
-	reset : in  std_logic := '0';
+	clk         : in  std_logic;
+	E           : in  std_logic;
+	reset       : in  std_logic := '0';
+	rxtxclk     : in std_logic;
 	rxtxclk_sel : in  std_logic := '0';
-	din   : in  std_logic_vector(7 downto 0);
-	sel   : in  std_logic;
-	rs    : in  std_logic;
-	rw    : in  std_logic;
-	dout  : out std_logic_vector(7 downto 0);
-	irq   : out std_logic;
-	tx    : out std_logic;
-	rx    : in  std_logic
+	din         : in  std_logic_vector(7 downto 0);
+	sel         : in  std_logic;
+	rs          : in  std_logic;
+	rw          : in  std_logic;
+	dout        : out std_logic_vector(7 downto 0);
+	irq         : out std_logic;
+	tx          : out std_logic;
+	rx          : in  std_logic
 );
 end component;
 
@@ -110,18 +112,19 @@ begin
 
 	acia_inst : acia
 	port map (
-		clk   => clk32,
-		reset => reset,
+		clk         => clk32,
+		reset       => reset,
 		rxtxclk_sel => acia_rxtxclk_sel,
-		E     => acia_E,
-		din   => Din,
-		sel   => acia_sel,
-		rs    => acia_rs,
-		rw    => acia_rw,
-		dout  => Dout,
-		irq   => acia_irq,
-		tx    => TX,
-		rx    => RX
+		rxtxclk     => rxtxclk,
+		E           => acia_E,
+		din         => Din,
+		sel         => acia_sel,
+		rs          => acia_rs,
+		rw          => acia_rw,
+		dout        => Dout,
+		irq         => acia_irq,
+		tx          => TX,
+		rx          => RX
 	);
 
 end rtl;
