@@ -81,6 +81,7 @@ reg [3:0] serial_rx_filter;      // filter to reduce noise
 reg serial_rx_frame_error;
 reg serial_rx_overrun;
 reg serial_rx_data_available;
+reg serial_rx_state;
 reg serial_in_filtered;
 reg serial_data_read;
 reg [2:0] serial_data_read_s;
@@ -102,15 +103,22 @@ always @(posedge rxtxclk) begin
 		serial_rx_filter <= 4'b1111;
 		serial_rx_overrun <= 1'b0;
 		serial_rx_frame_error <= 1'b0;
+		serial_rx_state <= 1'b0;
 	end else begin
 
 		if(serial_clk_en) begin
 			// receiver not running
 			if(serial_rx_cnt == 8'd0) begin
-				// seeing start bit?
-				if(serial_in_filtered == 1'b0) begin
-					// expecing 10 bits starting half a bit time from now
-					serial_rx_cnt <= { 4'd9, 4'd7 };
+				if (!serial_rx_state) begin
+					// returned to idle state after the stop bit?
+					if(serial_in_filtered == 1'b1) serial_rx_state <= 1'b1;
+				end	else begin
+					// seeing start bit?
+					if(serial_in_filtered == 1'b0) begin
+						// expecing 10 bits starting half a bit time from now
+						serial_rx_cnt <= { 4'd9, 4'd7 };
+						serial_rx_state <= 1'b0;
+					end
 				end
 			end else begin
 				// receiver is running
