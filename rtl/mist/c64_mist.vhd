@@ -1328,7 +1328,7 @@ begin
 	end process;
 
 	ear_input <= uart_rxD2 when st_user_port_uart = '0' and st_midi = "000" else '1';
-	midi_rx <= uart_rxD2 when st_midi /= "000" else '1';
+	midi_rx <= UART_RX when st_midi /= "000" else '1';
 
 	-- generate TOD clock from stable 32 MHz
 	process(clk32, reset_n)

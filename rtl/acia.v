@@ -29,10 +29,9 @@ assign dout_strobe = clk_en && sel && ~rw && rs;
 
 // the control register
 reg [7:0] serial_cr;
-reg [1:0] serial_irq_s; // synced to clk
 reg [7:0] serial_status_s1, serial_status_s2; // synced to clk
- 
-assign irq = serial_irq_s[1];
+
+assign irq = serial_status_s1[7];
 
 // ---------------- CPU read interface ------------
 
@@ -51,13 +50,12 @@ wire serial_irq = ~&serial_cr[1:0] &&
                  ((serial_cr[6:5] == 2'b01) && serial_tx_empty));  // tx irq
 
 wire [7:0] serial_status = { serial_irq, 1'b0 /* parity err */, serial_rx_overrun, serial_rx_frame_error,
-									2'b00 /* CTS & DCD */, serial_tx_empty, serial_rx_data_available};
+                             2'b00 /* CTS & DCD */, serial_tx_empty, serial_rx_data_available };
 
 always @(posedge clk) begin
 	// synchronizers
 	serial_status_s1 <= serial_status;
 	serial_status_s2 <= serial_status_s1;
-	serial_irq_s <= {serial_irq_s[0], serial_irq};
 end
 
 // implemented bitrates:
@@ -78,7 +76,7 @@ wire serial_clk_en = (serial_cr[1:0] == 2'b01 && serial_clk_cnt[5:0] == 6'd0) ||
 // --------------------------- serial receiver -----------------------------
 reg [7:0] serial_rx_cnt;         // bit + sub-bit counter
 reg [7:0] serial_rx_shift_reg;   // shift register used during reception
-reg [7:0] serial_rx_data;  
+reg [7:0] serial_rx_data;
 reg [3:0] serial_rx_filter;      // filter to reduce noise
 reg serial_rx_frame_error;
 reg serial_rx_overrun;
@@ -92,9 +90,10 @@ always @(posedge rxtxclk) begin
 	serial_data_read_s <= {serial_data_read_s[1:0], serial_data_read};
 	serial_rx_filter <= { serial_rx_filter[2:0], rx};
 
-	// serial input must be stable for 4 cycles to change state
-	if(serial_rx_filter == 4'b0000) serial_in_filtered <= 1'b0;
-	if(serial_rx_filter == 4'b1111) serial_in_filtered <= 1'b1;
+	// serial input must be stable for 3 cycles after the synchronization stage
+	// to change state
+	if(serial_rx_filter[3:1] == 3'b000) serial_in_filtered <= 1'b0;
+	if(serial_rx_filter[3:1] == 3'b111) serial_in_filtered <= 1'b1;
 
 	// serial acia master reset
 	if(serial_cr[1:0] == 2'b11) begin
@@ -110,8 +109,8 @@ always @(posedge rxtxclk) begin
 			if(serial_rx_cnt == 8'd0) begin
 				// seeing start bit?
 				if(serial_in_filtered == 1'b0) begin
-					// expecing 10 bits starting third a bit time from now
-					serial_rx_cnt <= { 4'd9, 4'd4 };
+					// expecing 10 bits starting half a bit time from now
+					serial_rx_cnt <= { 4'd9, 4'd7 };
 				end
 			end else begin
 				// receiver is running
