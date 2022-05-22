@@ -125,7 +125,7 @@ constant CONF_STR : string :=
 	"P1ONP,Midi,Off,Sequential Inc.,Passport/Sentech,DATEL/SIEL/JMS/C-LAB,Namesoft;"&
 	"P2O3,Joysticks,Normal,Swapped;"&
 	"P2OG,Disk Write,Enable,Disable;"&
-	"P2O7,Userport,4-player IF,UART;"&
+	"P2OQR,Userport,4-player IF,UART,UP9600;"&
 	"P2O4,CIA Model,6256,8521;"&
 	"P2OAB,Turbo,Off,Software Switchable,On;"&
 	"P2OKM,REU,Off,512K,1MB,2MB,4MB,8MB,16MB;"&
@@ -390,6 +390,7 @@ end component progressbar;
 	signal status         : std_logic_vector(63 downto 0);
   
 	-- status(1) and status(12) are not used
+	signal st_user_port        : std_logic_vector(1 downto 0); -- status(27 downto 26)
 	signal st_midi             : std_logic_vector(2 downto 0); -- status(23 downto 25)
 	signal st_reu              : std_logic_vector(2 downto 0); -- status(22 downto 20)
 	signal st_tape_progress    : std_logic;                    -- status(19)
@@ -399,7 +400,6 @@ end component progressbar;
 	signal st_sid_mode         : std_logic_vector(2 downto 0); -- status(15 downto 13)
 	signal st_turbo            : std_logic_vector(1 downto 0); -- status(11 downto 10)
 	signal st_scandoubler_fx   : std_logic_vector(1 downto 0); -- status(9 downto 8)
-	signal st_user_port_uart   : std_logic;                    -- status(7)
 	signal st_audio_filter_off : std_logic;                    -- status(6)
 	signal st_detach_cartdrige : std_logic;                    -- status(5)
 	signal st_cia_mode         : std_logic;                    -- status(4)
@@ -456,6 +456,9 @@ end component progressbar;
 	signal pb_in	: std_logic_vector(7 downto 0);
 	signal pb_out	: std_logic_vector(7 downto 0);
 	signal flag2_n  : std_logic;
+	signal sp1_out  : std_logic;
+	signal sp2_in   : std_logic;
+	signal cnt2_in  : std_logic;
 
 	signal tv15Khz_mode   : std_logic;
 	signal ypbpr          : std_logic;
@@ -528,8 +531,8 @@ end component progressbar;
 	signal force_erase      : std_logic;
 	signal mem_ce           : std_logic;
 	
-	signal uart_rxD         : std_logic;
-	signal uart_rxD2        : std_logic;
+	signal uart_rxD         : std_logic_vector(3 downto 0);
+	signal uart_rx_filtered : std_logic;
 
 	-- DMA/REU
 	signal reu_enable       : std_logic;
@@ -628,6 +631,7 @@ begin
 		mouse_strobe => mouse_strobe
 	);
 
+	st_user_port        <= status(27 downto 26);
 	st_midi             <= status(25 downto 23);
 	st_reu              <= status(22 downto 20);
 	st_tape_progress    <= status(19);
@@ -637,7 +641,6 @@ begin
 	st_sid_mode         <= status(15 downto 13);
 	st_turbo            <= status(11 downto 10);
 	st_scandoubler_fx   <= status(9 downto 8);
-	st_user_port_uart   <= status(7);
 	st_audio_filter_off <= status(6);
 	st_detach_cartdrige <= status(5);
 	st_cia_mode         <= status(4);
@@ -920,8 +923,9 @@ begin
 	process(clk_c64)
 	begin
 		if rising_edge(clk_c64) then
-			uart_rxD <= UART_RX;
-			uart_rxD2 <= uart_rxD;
+			uart_rxD <= uart_rxD(2 downto 0) & UART_RX;
+			if uart_rxD = "0000" then uart_rx_filtered <= '0'; end if;
+			if uart_rxD = "1111" then uart_rx_filtered <= '1'; end if;
 		end if;
 	end process;
 
@@ -1252,6 +1256,9 @@ begin
 		pb_in => pb_in,
 		pb_out => pb_out,
 		flag2_n => flag2_n,
+		sp1_out => sp1_out,
+		sp2_in => sp2_in,
+		cnt2_in => cnt2_in,
 		todclk => todclk,
 		cia_mode => st_cia_mode,
 		disk_num => open,
@@ -1299,14 +1306,19 @@ begin
 	end process;
 
 	-- connect user port
-	process (pa2_out, pb_out, joyC_c64, joyD_c64, uart_rxD2, st_user_port_uart, cass_motor, st_midi, midi_tx)
+	process (pa2_out, pb_out, sp1_out, joyC_c64, joyD_c64, uart_rx_filtered, st_user_port, cass_motor, st_midi, midi_tx)
 	begin
 		pa2_in <= pa2_out;
-		if st_user_port_uart = '0' then
+		sp2_in <= '1';
+		cnt2_in <= '1';
+		pb_in <= pb_out;
+		flag2_n <= '1';
+		UART_TX <= '1';
+
+		case st_user_port is
+		when "00" =>
 			-- Protovision 4 player interface
-			flag2_n <= '1';
 			UART_TX <= not cass_motor;
-			pb_in(7 downto 6) <= pb_out(7 downto 6);
 			if pb_out(7) = '1' then
 				pb_in(3 downto 0) <= not joyC_c64(3 downto 0);
 			else
@@ -1314,20 +1326,26 @@ begin
 			end if;
 			pb_in(4) <= not joyC_c64(4);
 			pb_in(5) <= not joyD_c64(4);
-		else
+		when "01" =>
 			-- UART
-			pb_in(7 downto 1) <= pb_out(7 downto 1);
-			flag2_n <= uart_rxD2;
-			pb_in(0) <= uart_rxD2;
+			flag2_n <= uart_rx_filtered;
+			pb_in(0) <= uart_rx_filtered;
 			UART_TX <= pa2_out;
-		end if;
+		when "10" =>
+			-- UP9600
+			cnt2_in <= pb_out(7);
+			UART_TX <= sp1_out;
+			sp2_in <= uart_rx_filtered;
+			flag2_n <= uart_rx_filtered;
+		when others => null;
+		end case;
 		if st_midi /= "000" then
 			UART_TX <= midi_tx;
 		end if;
 	end process;
 
-	ear_input <= uart_rxD2 when st_user_port_uart = '0' and st_midi = "000" else '1';
-	midi_rx <= uart_rxD2 when st_midi /= "000" else '1';
+	ear_input <= uart_rxD(1) when st_user_port = "00" and st_midi = "000" else '1';
+	midi_rx <= uart_rxD(1) when st_midi /= "000" else '1';
 
 	-- generate TOD clock from stable 32 MHz
 	process(clk32, reset_n)
