@@ -35,6 +35,7 @@ port(
 	disk_change : in std_logic;
 	disk_mount  : in std_logic := '1';
 	disk_readonly : in std_logic;
+	disk_g64    : in std_logic := '0';
 
 	iec_atn_i  : in std_logic;
 	iec_data_i : in std_logic;
@@ -72,17 +73,9 @@ end c1541_sd;
 
 architecture struct of c1541_sd is
 
-signal spi_ram_addr    : std_logic_vector(12 downto 0);
-signal spi_ram_di      : std_logic_vector( 7 downto 0);
-signal spi_ram_we      : std_logic;
-
-signal ram_addr        : std_logic_vector(12 downto 0);
-signal ram_di          : std_logic_vector( 7 downto 0);
-signal ram_do          : std_logic_vector( 7 downto 0);
-signal ram_we          : std_logic;
-
 signal floppy_ram_addr : std_logic_vector(12 downto 0);
 signal floppy_ram_di   : std_logic_vector( 7 downto 0);
+signal floppy_ram_do   : std_logic_vector( 7 downto 0);
 signal floppy_ram_we   : std_logic;
 
 signal c1541_logic_din   : std_logic_vector(7 downto 0); -- data read
@@ -103,15 +96,15 @@ signal track_num_dbl     : std_logic_vector(6 downto 0);
 signal new_track_num_dbl : std_logic_vector(6 downto 0);
 signal sd_busy           : std_logic;
 
-type byte_array is array(0 to 8191) of std_logic_vector(7 downto 0);
-signal track_buffer : byte_array;
-
 signal save_track      : std_logic;
 signal track_modified   : std_logic;
-signal sector_offset    : std_logic;
 signal save_track_stage : std_logic_vector(3 downto 0);
 signal id1 : std_logic_vector(7 downto 0);
 signal id2 : std_logic_vector(7 downto 0);
+signal disk_freq : std_logic_vector(1 downto 0);
+signal raw_disk : std_logic;
+signal raw_track_len : std_logic_vector(15 downto 0);
+signal max_track : std_logic_vector(6 downto 0);
 signal wps_flag : std_logic;
 signal change_timer : integer;
 signal mounted : std_logic := '0';
@@ -131,18 +124,22 @@ component mist_sd_card port
 		sd_buff_din    : out std_logic_vector(7 downto 0);
 		sd_buff_wr     : in  std_logic;
 
-		ram_addr       : out std_logic_vector(12 downto 0);
-		ram_di         : out std_logic_vector(7 downto 0);
-		ram_do         : in  std_logic_vector(7 downto 0);
-		ram_we         : out std_logic;
-		sector_offset  : out std_logic;  -- 0 : sector 0 is at ram adr 0, 1 : sector 0 is at ram adr 256
+		ram_addr       : in  std_logic_vector(12 downto 0);
+		ram_di         : in  std_logic_vector(7 downto 0);
+		ram_do         : out std_logic_vector(7 downto 0);
+		ram_we         : in  std_logic;
 		id1            : out std_logic_vector(7 downto 0);
 		id2            : out std_logic_vector(7 downto 0);
+		freq           : out std_logic_vector(1 downto 0);
+		raw            : out std_logic;
+		raw_track_len  : out std_logic_vector(15 downto 0);
+		max_track      : out std_logic_vector( 6 downto 0);
 
 		save_track     : in  std_logic;
 		change         : in  std_logic;                     -- Force reload as disk may have changed
 		mount          : in  std_logic;                     -- insert(1)/remove(0)
-		track          : in  std_logic_vector(5 downto 0);  -- Track number (0-34)
+		g64            : in  std_logic;
+		track          : in  std_logic_vector(6 downto 0);  -- Half track number (2-83)
 		busy           : out std_logic;
 
 		clk            : in  std_logic;     -- System clock
@@ -210,12 +207,15 @@ port map
 	byte_n => byte_n, -- byte ready
 
 	track_num  => new_track_num_dbl(6 downto 1),
-	id1 => id1,
-	id2 => id2,
+	id1        => id1,
+	id2        => id2,
 	mounted    => mounted,
+	raw        => raw_disk,
+	raw_freq   => disk_freq,
+	raw_track_len => raw_track_len,
 
 	ram_addr   => floppy_ram_addr,
-	ram_do     => ram_do, 	
+	ram_do     => floppy_ram_do,
 	ram_di     => floppy_ram_di,
 	ram_we     => floppy_ram_we,
 	ram_ready  => not sd_busy,
@@ -230,20 +230,24 @@ port map
 	clk       => clk32,
 	reset     => reset,
 
-	ram_addr => spi_ram_addr, -- out unsigned(13 downto 0);
-	ram_di   => spi_ram_di,   -- out unsigned(7 downto 0);
-	ram_do   => ram_do,       -- in  unsigned(7 downto 0);
-	ram_we   => spi_ram_we,
+	ram_addr => floppy_ram_addr, -- in  unsigned(12 downto 0);
+	ram_di   => floppy_ram_di,   -- in  unsigned(7 downto 0);
+	ram_do   => floppy_ram_do,   -- out unsigned(7 downto 0);
+	ram_we   => floppy_ram_we,
 
-	track     => new_track_num_dbl(6 downto 1),
+	track     => new_track_num_dbl(6 downto 0),
 --	disk_num      => disk_num,
 	busy          => sd_busy,
 	save_track    => save_track,
-	sector_offset => sector_offset,
 	id1           => id1,
 	id2           => id2,
+	freq          => disk_freq,
+	raw           => raw_disk,
+	raw_track_len => raw_track_len,
 	change        => disk_change,
 	mount         => disk_mount,
+	g64           => disk_g64,
+	max_track     => max_track,
 
 	sd_buff_addr => sd_buff_addr,
 	sd_buff_dout => sd_buff_dout,
@@ -314,7 +318,7 @@ begin
 					or (stp_r = "10" and stp = "01")
 					or (stp_r = "01" and stp = "11")
 					or (stp_r = "11" and stp = "00")) then
-						if track_num_dbl < "1010000" then
+						if track_num_dbl < max_track then
 							track_num_dbl <= track_num_dbl + '1';
 							if track_modified = '1' then
 								if save_track_stage = X"0" then
@@ -330,7 +334,7 @@ begin
 					or (stp_r = "10" and stp = "00")
 					or (stp_r = "01" and stp = "10")
 					or (stp_r = "11" and stp = "01")) then 
-						if track_num_dbl > "0000001" then
+						if track_num_dbl > "0000010" then
 							track_num_dbl <= track_num_dbl - '1';
 							if track_modified = '1' then
 								if save_track_stage = X"0" then
@@ -382,20 +386,6 @@ begin
 	end if;  -- rising edge clock
 end process;
 
-
-process(clk32)
-begin
-	if falling_edge(clk32) then
-		if ram_we = '1' then
-			track_buffer(to_integer(unsigned(ram_addr))) <= ram_di;
-		end if;
-		ram_do <= track_buffer(to_integer(unsigned(ram_addr)));
-	end if;
-end process;
-
-ram_addr <= spi_ram_addr when sd_busy = '1' else floppy_ram_addr + ("000"&sector_offset&X"00");
-ram_we   <= spi_ram_we   when sd_busy = '1' else floppy_ram_we;
-ram_di   <= spi_ram_di   when sd_busy = '1' else floppy_ram_di;
 
 process (clk32)
 begin

@@ -31,11 +31,14 @@ port(
 	track_num   : in  std_logic_vector(5 downto 0);
 	id1         : in  std_logic_vector(7 downto 0);
 	id2         : in  std_logic_vector(7 downto 0);
+	raw_freq    : in  std_logic_vector(1 downto 0);
 	mounted     : in  std_logic;
-	
+	raw         : in  std_logic;
+	raw_track_len : in  std_logic_vector(15 downto 0);
+
 	ram_addr    : out std_logic_vector(12 downto 0);
 	ram_do      : in  std_logic_vector(7 downto 0);
-	ram_di      : buffer  std_logic_vector(7 downto 0);
+	ram_di      : out std_logic_vector(7 downto 0);
 	ram_we      : out std_logic;
 	ram_ready   : in  std_logic;
 	
@@ -49,6 +52,10 @@ signal bit_clk_en  : std_logic;
 signal bit_clk_div : std_logic_vector(7 downto 0);
 signal sync_cnt    : std_logic_vector(5 downto 0) := (others => '0');
 signal byte_cnt    : std_logic_vector(8 downto 0) := (others => '0');
+signal byte_in     : std_logic_vector(7 downto 0);
+signal byte_out    : std_logic_vector(7 downto 0);
+signal byte_we     : std_logic;
+signal byte_addr   : std_logic_vector(12 downto 0);
 signal nibble      : std_logic := '0';
 signal gcr_bit_cnt : std_logic_vector(3 downto 0) := (others => '0');
 signal bit_cnt     : std_logic_vector(2 downto 0) := (others => '0');
@@ -72,6 +79,17 @@ signal mode_r2     : std_logic;
 
 signal old_track   : std_logic_vector(5 downto 0);
 
+signal raw_bit_clk_en : std_logic;
+signal raw_bit_clk_div: std_logic_vector(7 downto 0);
+signal raw_byte_cnt   : std_logic_vector(12 downto 0);
+signal raw_bit_cnt    : std_logic_vector( 2 downto 0);
+signal raw_byte_in    : std_logic_vector( 7 downto 0);
+signal raw_byte_we    : std_logic;
+signal synced_bit_cnt : std_logic_vector( 2 downto 0);
+signal shift_reg      : std_logic_vector(17 downto 0);
+signal sync_in_n_raw  : std_logic;
+signal byte_in_n_raw  : std_logic;
+
 type gcr_array is array(0 to 15) of std_logic_vector(4 downto 0);
 
 signal gcr_lut : gcr_array := 
@@ -90,9 +108,18 @@ signal nibble_out     : std_logic_vector(3 downto 0);
 signal autorise_write : std_logic;
 signal autorise_count : std_logic;
 
+signal lfsr : std_logic_vector(3 downto 0) := "0001";
+
 begin
 
-sync_n <= sync_in_n when mtr = '1' and ram_ready = '1' else '1';
+ram_addr <=       raw_byte_cnt when raw = '1' else byte_addr;
+ram_we <=          raw_byte_we when raw = '1' else byte_we;
+ram_di <=     c1541_logic_dout when raw = '1' else byte_out;
+c1541_logic_din <= raw_byte_in when raw = '1' else byte_in;
+
+sync_n <= '1' when ram_ready = '0' or mtr = '0' else
+	sync_in_n_raw when raw = '1' else
+	sync_in_n;
 
 dbg_sector <= sector;
 
@@ -140,8 +167,8 @@ gcr_bit <= gcr_nibble(to_integer(unsigned(gcr_bit_cnt)));
 
 sector_max <=  "10100" when track_num < std_logic_vector(to_unsigned(18,6)) else
                "10010" when track_num < std_logic_vector(to_unsigned(25,6)) else
-				   "10001" when track_num < std_logic_vector(to_unsigned(31,6)) else
- 	         	"10000" ;
+               "10001" when track_num < std_logic_vector(to_unsigned(31,6)) else
+               "10000";
 
 gcr_bit_out <= gcr_byte_out(to_integer(unsigned(not bit_cnt)));
 
@@ -169,26 +196,42 @@ with freq select
                    x"77" when "01",
                    x"7F" when others;
 
+with raw_freq select
+raw_bit_clk_div <= x"67" when "11",
+                   x"6F" when "10",
+                   x"77" when "01",
+                   x"7F" when others;
+
 process (clk32)
 	variable bit_clk_cnt : std_logic_vector(7 downto 0) := (others => '0');
+	variable raw_bit_clk_cnt : std_logic_vector(7 downto 0) := (others => '0');
 begin
 	if rising_edge(clk32) then
 
 		mode_r1 <= mode;
 
 		bit_clk_en <= '0';
+		raw_bit_clk_en <= '0';
 		byte_n <= '1';
 		if (mode_r1 xor mode) = '1' then -- read <-> write change
-			bit_clk_cnt := (others => '0');			
+			bit_clk_cnt := (others => '0');
+			raw_bit_clk_cnt := (others => '0');
 		elsif mtr = '1' then
-			if bit_clk_cnt = bit_clk_div then
+			if bit_clk_cnt = 0 then
 				bit_clk_en <= '1';
-				bit_clk_cnt := (others => '0');
+				bit_clk_cnt := bit_clk_div;
 			else
-				bit_clk_cnt := bit_clk_cnt + '1';
+				bit_clk_cnt := bit_clk_cnt - '1';
 			end if;
 
-			if byte_in_n = '0' and ram_ready = '1' then
+			if raw_bit_clk_cnt = 0 then
+				raw_bit_clk_en <= '1';
+				raw_bit_clk_cnt := raw_bit_clk_div;
+			else
+				raw_bit_clk_cnt := raw_bit_clk_cnt - '1';
+			end if;
+
+			if ((byte_in_n = '0' and raw = '0') or (byte_in_n_raw = '0' and raw = '1')) and ram_ready = '1' then
 				if bit_clk_cnt > X"10" and bit_clk_cnt < X"5E" then
 					byte_n <= '0';
 				end if;
@@ -197,9 +240,75 @@ begin
 	end if;
 end process;
 
-read_write_process : process (clk32, bit_clk_en)
+lfsr_process : process(clk32)
 begin
 	if rising_edge(clk32) then
+		lfsr <= (lfsr(0) xor lfsr(1)) & lfsr(3 downto 1);
+	end if;
+end process;
+
+sync_in_n_raw <= '0' when shift_reg(17 downto 8) = "11"&x"FF" and raw_track_len /= 0 and mode = '1' else '1';
+
+-- G64 handling
+raw_read_write_process : process(clk32)
+begin
+	if rising_edge(clk32) then
+		raw_byte_we <= '0';
+		if mtr = '0' or mounted = '0' or raw = '0' then
+			raw_byte_cnt <= '0'&x"202";
+			synced_bit_cnt <= "000";
+			raw_bit_cnt <= "000";
+			byte_in_n_raw <= '1';
+			shift_reg <= (others => '0');
+		else
+			if bit_clk_en = '1' then
+				byte_in_n_raw <= '1';
+				shift_reg(17 downto 8) <= shift_reg(16 downto 7);
+
+				if shift_reg(10 downto 7) /= "0000" or lfsr(0) = '1' then
+					-- not weak GCR (or randomly shift and insert '1' if weak)
+					if shift_reg(10 downto 7) = "0000" then
+						shift_reg(8) <= '1';
+					end if;
+					if synced_bit_cnt = "111" then
+						byte_in_n_raw <= '0';
+						raw_byte_in <= shift_reg(15 downto 8);
+					end if;
+
+					synced_bit_cnt <= synced_bit_cnt + 1;
+				end if;
+
+				if sync_in_n_raw = '0' or ram_ready = '0' or raw_track_len = 0 then
+					synced_bit_cnt <= "000";
+				end if;
+			end if;
+
+			if raw_bit_clk_en = '1' then
+				raw_bit_cnt <= raw_bit_cnt + '1';
+				if raw_bit_cnt = 0 then
+					shift_reg(7 downto 0) <= ram_do;
+				else
+					shift_reg(7 downto 0) <= shift_reg(6 downto 0) & '0';
+				end if;
+
+				if raw_bit_cnt = "111" then
+					if raw_track_len /= 0 then
+						raw_byte_we <= not mode;
+					end if;
+					raw_byte_cnt <= raw_byte_cnt + 1;
+					if raw_byte_cnt >= raw_track_len + 1 and raw_track_len /= 0 then
+						raw_byte_cnt <= '0'&x"002";
+					end if;
+				end if;
+			end if;
+		end if;
+	end if;
+end process;
+
+-- D64 handling
+read_write_process : process (clk32, raw)
+begin
+	if rising_edge(clk32) and raw = '0' then
 
 	  old_track <= track_num;
 
@@ -231,7 +340,7 @@ begin
 			nibble          <= '0';
 			gcr_bit_cnt     <= (others => '0');
 			bit_cnt         <= (others => '0');
-			c1541_logic_din <= (others => '1');
+			byte_in         <= (others => '1');
 			gcr_byte        <= (others => '0');
 			data_cks        <= (others => '0');
 
@@ -251,7 +360,7 @@ begin
 				gcr_bit_cnt <= (others => '0');
 				if nibble = '1' then 
 					nibble    <= '0';
-					ram_addr <= sector & byte_cnt(7 downto 0);
+					byte_addr <= sector & byte_cnt(7 downto 0);
 					if byte_cnt = "000000000" then
 						data_cks <= (others => '0');
 					else
@@ -262,7 +371,7 @@ begin
 					end if;
 				else
 					nibble <= '1';
-					if mode = '0' and ram_di = X"07" then
+					if mode = '0' and byte_out = X"07" then
 						autorise_write <= '1';
 						autorise_count <= '1';
 					end if;
@@ -303,7 +412,7 @@ begin
 			gcr_byte <= gcr_byte(6 downto 0) & gcr_bit;
 
 			if bit_cnt = X"7" then
-				c1541_logic_din <= gcr_byte(6 downto 0) & gcr_bit;
+				byte_in <= gcr_byte(6 downto 0) & gcr_bit;
 			end if;
 
 			-- serialise/convert byte to floppy (ram)				
@@ -311,18 +420,18 @@ begin
 
 			if gcr_bit_cnt = X"0" then
 				if nibble = '0' then 
-					ram_di(3 downto 0) <= nibble_out; 
+					byte_out(3 downto 0) <= nibble_out;
 				else
-					ram_di(7 downto 4) <= nibble_out; 
+					byte_out(7 downto 4) <= nibble_out;
 				end if;
 			end if;
 
 			if gcr_bit_cnt = X"1" and nibble = '0' then
 				if autorise_write = '1' then
-					ram_we <= '1';
+					byte_we <= '1';
 				end if;	
 			else
-				ram_we <= '0';
+				byte_we <= '0';
 			end if;
 
 		end if;

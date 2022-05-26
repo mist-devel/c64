@@ -110,7 +110,7 @@ end component;
 
 constant CONF_STR : string := 
 	"C64;;"&
-	"S0U,D64,Mount Disk;"&
+	"S0U,D64G64,Mount Disk;"&
 	"F,PRGTAPCRTREU,Load;"& --2
 	"F,ROM,Load;"& --3
 	"TH,Play/Stop TAP;"&
@@ -1412,6 +1412,7 @@ begin
 		disk_mount => sd_mount,
 		disk_num  => (others => '0'), -- always 0 on MiST, the image is selected by the OSD menu
 		disk_readonly => disk_readonly,
+		disk_g64 => ioctl_index(6),
 
 		iec_atn_i  => c1541_iec_atn_i,
 		iec_data_i => c1541_iec_data_i,
