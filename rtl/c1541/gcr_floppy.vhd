@@ -37,7 +37,7 @@ port(
 
 	ram_addr    : out std_logic_vector(12 downto 0);
 	ram_do      : in  std_logic_vector(7 downto 0);
-	ram_di      : buffer  std_logic_vector(7 downto 0);
+	ram_di      : out std_logic_vector(7 downto 0);
 	ram_we      : out std_logic;
 	ram_ready   : in  std_logic;
 	
@@ -51,6 +51,7 @@ signal bit_clk_en  : std_logic;
 signal bit_clk_div : std_logic_vector(7 downto 0);
 signal sync_cnt    : std_logic_vector(5 downto 0) := (others => '0');
 signal byte_cnt    : std_logic_vector(8 downto 0) := (others => '0');
+signal byte_in     : std_logic_vector(7 downto 0);
 signal byte_out    : std_logic_vector(7 downto 0);
 signal byte_we     : std_logic;
 signal byte_addr   : std_logic_vector(12 downto 0);
@@ -79,7 +80,7 @@ signal old_track   : std_logic_vector(5 downto 0);
 
 signal raw_byte_cnt   : std_logic_vector(12 downto 0);
 signal raw_bit_cnt    : std_logic_vector( 2 downto 0);
-signal raw_byte_out   : std_logic_vector( 7 downto 0);
+signal raw_byte_in    : std_logic_vector( 7 downto 0);
 signal raw_byte_we    : std_logic;
 signal synced_bit_cnt : std_logic_vector( 2 downto 0);
 signal shift_reg      : std_logic_vector(16 downto 0);
@@ -106,9 +107,10 @@ signal autorise_count : std_logic;
 
 begin
 
-ram_addr <=        raw_byte_cnt when raw = '1' else byte_addr;
-ram_we <=           raw_byte_we when raw = '1' else byte_we;
-c1541_logic_din <= raw_byte_out when raw = '1' else byte_out;
+ram_addr <=       raw_byte_cnt when raw = '1' else byte_addr;
+ram_we <=          raw_byte_we when raw = '1' else byte_we;
+ram_di <=     c1541_logic_dout when raw = '1' else byte_out;
+c1541_logic_din <= raw_byte_in when raw = '1' else byte_in;
 
 sync_n <= '1' when ram_ready = '0' or mtr = '0' else
 	sync_in_n_raw when raw = '1' else
@@ -217,7 +219,7 @@ begin
 	end if;
 end process;
 
-sync_in_n_raw <= '0' when shift_reg(16 downto 7) = "11"&x"FF" and raw_track_len /= 0 else '1';
+sync_in_n_raw <= '0' when shift_reg(16 downto 7) = "11"&x"FF" and raw_track_len /= 0 and mode = '1' else '1';
 
 -- G64 handling
 raw_read_write_process : process(clk32)
@@ -245,11 +247,14 @@ begin
 				synced_bit_cnt <= synced_bit_cnt + 1;
 				if synced_bit_cnt = "111" then
 					byte_in_n_raw <= '0';
-					raw_byte_out <= shift_reg(14 downto 7);
+					raw_byte_in <= shift_reg(14 downto 7);
 				end if;
 			end if;
 
 			if raw_bit_cnt = "111" then
+				if raw_track_len /= 0 then
+					raw_byte_we <= not mode;
+				end if;
 				raw_byte_cnt <= raw_byte_cnt + 1;
 				if raw_byte_cnt >= raw_track_len + 2 and raw_track_len /= 0 then
 					raw_byte_cnt <= '0'&x"002";
@@ -294,7 +299,7 @@ begin
 			nibble          <= '0';
 			gcr_bit_cnt     <= (others => '0');
 			bit_cnt         <= (others => '0');
-			byte_out        <= (others => '1');
+			byte_in         <= (others => '1');
 			gcr_byte        <= (others => '0');
 			data_cks        <= (others => '0');
 
@@ -325,7 +330,7 @@ begin
 					end if;
 				else
 					nibble <= '1';
-					if mode = '0' and ram_di = X"07" then
+					if mode = '0' and byte_out = X"07" then
 						autorise_write <= '1';
 						autorise_count <= '1';
 					end if;
@@ -366,7 +371,7 @@ begin
 			gcr_byte <= gcr_byte(6 downto 0) & gcr_bit;
 
 			if bit_cnt = X"7" then
-				byte_out <= gcr_byte(6 downto 0) & gcr_bit;
+				byte_in <= gcr_byte(6 downto 0) & gcr_bit;
 			end if;
 
 			-- serialise/convert byte to floppy (ram)				
@@ -374,9 +379,9 @@ begin
 
 			if gcr_bit_cnt = X"0" then
 				if nibble = '0' then 
-					ram_di(3 downto 0) <= nibble_out; 
+					byte_out(3 downto 0) <= nibble_out;
 				else
-					ram_di(7 downto 4) <= nibble_out; 
+					byte_out(7 downto 4) <= nibble_out;
 				end if;
 			end if;
 
