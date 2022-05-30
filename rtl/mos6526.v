@@ -75,7 +75,6 @@ reg [23:0] tod_latch;
 reg        tod_latched;
 
 reg        sp_pending;
-reg        sp_received;
 reg        sp_transmit;
 reg [ 7:0] sp_shiftreg;
 
@@ -406,7 +405,6 @@ always @(posedge clk) begin
     sdr         <= 8'h00;
     sp_out      <= 1'b1;
     sp_pending  <= 1'b0;
-    sp_received <= 1'b0;
     sp_transmit <= 1'b0;
     sp_shiftreg <= 8'h00;
     icr[3]      <= 1'b0;
