@@ -101,6 +101,7 @@ signal track_modified   : std_logic;
 signal save_track_stage : std_logic_vector(3 downto 0);
 signal id1 : std_logic_vector(7 downto 0);
 signal id2 : std_logic_vector(7 downto 0);
+signal disk_freq : std_logic_vector(1 downto 0);
 signal raw_disk : std_logic;
 signal raw_track_len : std_logic_vector(15 downto 0);
 signal max_track : std_logic_vector(6 downto 0);
@@ -129,6 +130,7 @@ component mist_sd_card port
 		ram_we         : in  std_logic;
 		id1            : out std_logic_vector(7 downto 0);
 		id2            : out std_logic_vector(7 downto 0);
+		freq           : out std_logic_vector(1 downto 0);
 		raw            : out std_logic;
 		raw_track_len  : out std_logic_vector(15 downto 0);
 		max_track      : out std_logic_vector( 6 downto 0);
@@ -209,6 +211,7 @@ port map
 	id2        => id2,
 	mounted    => mounted,
 	raw        => raw_disk,
+	raw_freq   => disk_freq,
 	raw_track_len => raw_track_len,
 
 	ram_addr   => floppy_ram_addr,
@@ -238,6 +241,7 @@ port map
 	save_track    => save_track,
 	id1           => id1,
 	id2           => id2,
+	freq          => disk_freq,
 	raw           => raw_disk,
 	raw_track_len => raw_track_len,
 	change        => disk_change,

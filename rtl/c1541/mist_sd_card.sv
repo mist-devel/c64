@@ -48,6 +48,7 @@ module mist_sd_card
 
 	output reg  [7:0] id1,
 	output reg  [7:0] id2,
+	output reg  [1:0] freq,
 	output reg [15:0] raw_track_len,
 	output reg  [6:0] max_track,
 	output reg    raw,
@@ -67,16 +68,18 @@ reg   [6:0] g64_track_idx;
 reg  [23:0] g64_offsets_dout;
 always @(negedge clk) g64_offsets_dout <= g64_offsets[g64_track_idx];
 reg         g64_rd, g64_wr;
+reg   [7:0] g64_tlen_lo;
 
-reg [31:0] lba;
-reg  [4:0] rel_lba;
-reg  [4:0] track_lbas;
+reg   [1:0] freq_table[88];
 
-reg        new_disk;
-wire [6:0] new_track = new_disk ? raw ? 7'b1111111 : {6'h12, 1'b0} : track;
+reg  [31:0] lba;
+reg   [4:0] rel_lba;
+reg   [4:0] track_lbas;
 
-reg  [8:0] sector_offset;
+reg         new_disk;
+wire  [6:0] new_track = new_disk ? raw ? 7'b1111111 : {6'h12, 1'b0} : track;
 
+reg   [8:0] sector_offset;
 
 always @(posedge clk) begin
 	reg old_ack;
@@ -115,7 +118,6 @@ always @(posedge clk) begin
 	else
 	if(g64_rd) begin
 		g64_rd <= 0;
-		raw_track_len <= 0;
 		if (g64_offsets_dout != 0) begin
 			sector_offset <= g64_offsets_dout[8:0];
 			lba <= g64_offsets_dout[23:9];
@@ -123,6 +125,8 @@ always @(posedge clk) begin
 			sd_rd <= 1;
 			busy <= 1;
 		end
+		else
+			raw_track_len <= 0;
 	end
 	else
 	if(g64_wr) begin
@@ -146,8 +150,9 @@ always @(posedge clk) begin
 
 		// scan G64 track offsets
 		if(raw && cur_track == 'b1111111 && !saving && sd_buff_wr) begin
-			if (sd_buff_addr == 9'h09) max_track <= sd_buff_dout[6:0];
-			if (sd_buff_addr >= 9'h0c && sd_buff_addr <= 9'h15b)
+			if ({rel_lba, sd_buff_addr} == 14'h9) max_track <= sd_buff_dout[6:0];
+			// track offsets
+			if ({rel_lba, sd_buff_addr} >= 14'hc && {rel_lba, sd_buff_addr} <= 14'h15b)
 			case (sd_buff_addr[1:0])
 				2'b00: g64_offsets_din[ 7: 0] <= sd_buff_dout;
 				2'b01: g64_offsets_din[15: 8] <= sd_buff_dout;
@@ -155,13 +160,16 @@ always @(posedge clk) begin
 				2'b11: g64_offsets[g64_offs_idx] <= g64_offsets_din;
 				default: ;
 			endcase
+			// speed zones
+			if ({rel_lba, sd_buff_addr} >= 14'h15c && {rel_lba, sd_buff_addr} <= 14'h2ab && sd_buff_addr[1:0] == 0)
+				freq_table[{rel_lba, sd_buff_addr[8:2]} - 8'h55] <= sd_buff_dout[1:0];
 		end
 		// G64 track length
 		if(raw && cur_track != 'b1111111 && !saving && sd_buff_wr) begin
-			if ({rel_lba, sd_buff_addr} == sector_offset) raw_track_len[7:0] <= sd_buff_dout;
+			if ({rel_lba, sd_buff_addr} == sector_offset) g64_tlen_lo[7:0] <= sd_buff_dout;
 			if ({rel_lba, sd_buff_addr} == sector_offset + 1'd1) begin
-				raw_track_len[15:8] <= sd_buff_dout;
-				track_lbas <= (sector_offset + {sd_buff_dout, raw_track_len[7:0]} + 9'd511) >> 4'd9;
+				raw_track_len <= {sd_buff_dout, g64_tlen_lo};
+				track_lbas <= (sector_offset + 2'd2 + {sd_buff_dout, g64_tlen_lo} + 9'd511) >> 4'd9;
 			end
 		end
 
@@ -190,6 +198,7 @@ always @(posedge clk) begin
 			end
 			else
 			begin
+				freq <= freq_table[cur_track];
 				busy <= 0;
 			end
 		end
@@ -219,7 +228,7 @@ always @(posedge clk) begin
 				// G64 support
 				if (new_disk) begin
 					lba <= 0; // read header
-					track_lbas <= 5'd1;
+					track_lbas <= 5'd2;
 					sd_rd <= 1;
 					busy <= 1;
 				end

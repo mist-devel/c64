@@ -31,6 +31,7 @@ port(
 	track_num   : in  std_logic_vector(5 downto 0);
 	id1         : in  std_logic_vector(7 downto 0);
 	id2         : in  std_logic_vector(7 downto 0);
+	raw_freq    : in  std_logic_vector(1 downto 0);
 	mounted     : in  std_logic;
 	raw         : in  std_logic;
 	raw_track_len : in  std_logic_vector(15 downto 0);
@@ -78,12 +79,14 @@ signal mode_r2     : std_logic;
 
 signal old_track   : std_logic_vector(5 downto 0);
 
+signal raw_bit_clk_en : std_logic;
+signal raw_bit_clk_div: std_logic_vector(7 downto 0);
 signal raw_byte_cnt   : std_logic_vector(12 downto 0);
 signal raw_bit_cnt    : std_logic_vector( 2 downto 0);
 signal raw_byte_in    : std_logic_vector( 7 downto 0);
 signal raw_byte_we    : std_logic;
 signal synced_bit_cnt : std_logic_vector( 2 downto 0);
-signal shift_reg      : std_logic_vector(16 downto 0);
+signal shift_reg      : std_logic_vector(17 downto 0);
 signal sync_in_n_raw  : std_logic;
 signal byte_in_n_raw  : std_logic;
 
@@ -104,6 +107,8 @@ signal nibble_out     : std_logic_vector(3 downto 0);
 
 signal autorise_write : std_logic;
 signal autorise_count : std_logic;
+
+signal lfsr : std_logic_vector(3 downto 0) := "0001";
 
 begin
 
@@ -191,23 +196,39 @@ with freq select
                    x"77" when "01",
                    x"7F" when others;
 
+with raw_freq select
+raw_bit_clk_div <= x"67" when "11",
+                   x"6F" when "10",
+                   x"77" when "01",
+                   x"7F" when others;
+
 process (clk32)
 	variable bit_clk_cnt : std_logic_vector(7 downto 0) := (others => '0');
+	variable raw_bit_clk_cnt : std_logic_vector(7 downto 0) := (others => '0');
 begin
 	if rising_edge(clk32) then
 
 		mode_r1 <= mode;
 
 		bit_clk_en <= '0';
+		raw_bit_clk_en <= '0';
 		byte_n <= '1';
 		if (mode_r1 xor mode) = '1' then -- read <-> write change
-			bit_clk_cnt := (others => '0');			
+			bit_clk_cnt := (others => '0');
+			raw_bit_clk_cnt := (others => '0');
 		elsif mtr = '1' then
-			if bit_clk_cnt = bit_clk_div then
+			if bit_clk_cnt = 0 then
 				bit_clk_en <= '1';
-				bit_clk_cnt := (others => '0');
+				bit_clk_cnt := bit_clk_div;
 			else
-				bit_clk_cnt := bit_clk_cnt + '1';
+				bit_clk_cnt := bit_clk_cnt - '1';
+			end if;
+
+			if raw_bit_clk_cnt = 0 then
+				raw_bit_clk_en <= '1';
+				raw_bit_clk_cnt := raw_bit_clk_div;
+			else
+				raw_bit_clk_cnt := raw_bit_clk_cnt - '1';
 			end if;
 
 			if ((byte_in_n = '0' and raw = '0') or (byte_in_n_raw = '0' and raw = '1')) and ram_ready = '1' then
@@ -219,7 +240,14 @@ begin
 	end if;
 end process;
 
-sync_in_n_raw <= '0' when shift_reg(16 downto 7) = "11"&x"FF" and raw_track_len /= 0 and mode = '1' else '1';
+lfsr_process : process(clk32)
+begin
+	if rising_edge(clk32) then
+		lfsr <= (lfsr(0) xor lfsr(1)) & lfsr(3 downto 1);
+	end if;
+end process;
+
+sync_in_n_raw <= '0' when shift_reg(17 downto 8) = "11"&x"FF" and raw_track_len /= 0 and mode = '1' else '1';
 
 -- G64 handling
 raw_read_write_process : process(clk32)
@@ -232,32 +260,45 @@ begin
 			raw_bit_cnt <= "000";
 			byte_in_n_raw <= '1';
 			shift_reg <= (others => '0');
-		elsif bit_clk_en = '1' then
-			byte_in_n_raw <= '1';
-			raw_bit_cnt <= raw_bit_cnt + '1';
-			if raw_bit_cnt = 0 then
-				shift_reg <= shift_reg(15 downto 7) & ram_do;
-			else
-				shift_reg <= shift_reg(15 downto 0) & '0';
-			end if;
+		else
+			if bit_clk_en = '1' then
+				byte_in_n_raw <= '1';
+				shift_reg(17 downto 8) <= shift_reg(16 downto 7);
 
-			if sync_in_n_raw = '0' or ram_ready = '0' or raw_track_len = 0 then
-				synced_bit_cnt <= "000";
-			else
-				synced_bit_cnt <= synced_bit_cnt + 1;
-				if synced_bit_cnt = "111" then
-					byte_in_n_raw <= '0';
-					raw_byte_in <= shift_reg(14 downto 7);
+				if shift_reg(10 downto 7) /= "0000" or lfsr(0) = '1' then
+					-- not weak GCR (or randomly shift and insert '1' if weak)
+					if shift_reg(10 downto 7) = "0000" then
+						shift_reg(8) <= '1';
+					end if;
+					if synced_bit_cnt = "111" then
+						byte_in_n_raw <= '0';
+						raw_byte_in <= shift_reg(15 downto 8);
+					end if;
+
+					synced_bit_cnt <= synced_bit_cnt + 1;
+				end if;
+
+				if sync_in_n_raw = '0' or ram_ready = '0' or raw_track_len = 0 then
+					synced_bit_cnt <= "000";
 				end if;
 			end if;
 
-			if raw_bit_cnt = "111" then
-				if raw_track_len /= 0 then
-					raw_byte_we <= not mode;
+			if raw_bit_clk_en = '1' then
+				raw_bit_cnt <= raw_bit_cnt + '1';
+				if raw_bit_cnt = 0 then
+					shift_reg(7 downto 0) <= ram_do;
+				else
+					shift_reg(7 downto 0) <= shift_reg(6 downto 0) & '0';
 				end if;
-				raw_byte_cnt <= raw_byte_cnt + 1;
-				if raw_byte_cnt >= raw_track_len + 2 and raw_track_len /= 0 then
-					raw_byte_cnt <= '0'&x"002";
+
+				if raw_bit_cnt = "111" then
+					if raw_track_len /= 0 then
+						raw_byte_we <= not mode;
+					end if;
+					raw_byte_cnt <= raw_byte_cnt + 1;
+					if raw_byte_cnt >= raw_track_len + 1 and raw_track_len /= 0 then
+						raw_byte_cnt <= '0'&x"002";
+					end if;
 				end if;
 			end if;
 		end if;
