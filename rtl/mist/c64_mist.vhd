@@ -1289,7 +1289,7 @@ begin
 		if reset_n = '0' then
 			mouse_x_pos <= (others => '0');
 			mouse_y_pos <= (others => '0');
-			mouse_en <= '0';
+			mouse_en <= '1';
 		elsif rising_edge(clk_c64) then
 			if mouse_strobe = '1' then
 				mouse_en <= '1';
