@@ -111,7 +111,7 @@ end component;
 constant CONF_STR : string := 
 	"C64;;"&
 	"S0U,D64G64,Mount Disk;"&
-	"F,PRGTAPCRTREU,Load;"& --2
+	"F,CRTPRGTAPREU,Load;"& --2
 	"F,ROM,Load;"& --3
 	"TH,Play/Stop TAP;"&
 	"P1,Video & Audio;"&
@@ -151,9 +151,9 @@ signal conf_ram : conf_ram_t := to_ram(CONF_STR);
 
 -- constants for ioctl_index 
 constant FILE_BOOT : std_logic_vector(7 downto 0) := x"00";      -- ROM files sent at boot time
-constant FILE_PRG  : std_logic_vector(7 downto 0) := x"02";
-constant FILE_TAP  : std_logic_vector(7 downto 0) := x"42";
-constant FILE_CRT  : std_logic_vector(7 downto 0) := x"82";
+constant FILE_CRT  : std_logic_vector(7 downto 0) := x"02";
+constant FILE_PRG  : std_logic_vector(7 downto 0) := x"42";
+constant FILE_TAP  : std_logic_vector(7 downto 0) := x"82";
 constant FILE_REU  : std_logic_vector(7 downto 0) := x"C2";
 constant FILE_ROM  : std_logic_vector(7 downto 0) := x"03";
 
