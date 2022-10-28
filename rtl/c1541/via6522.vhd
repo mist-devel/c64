@@ -234,13 +234,13 @@ begin
             port_b_c <= port_b_i;
 
             -- input latch emulation
-            if pa_latch_en = '0' or ca1_event = '1' then
+            if pa_latch_en = '0' or (ca1_d xor ca1_edge_select) = '1' then
                 ira <= port_a_c;
             end if;
-            
-            if pb_latch_en = '0' or cb1_event = '1' then
+
+            if pb_latch_en = '0' or (cb1_d xor cb1_edge_select) = '1' then
                 irb <= port_b_c;
-            end if;            
+            end if;
 
             -- CA2 logic
             if ca1_event = '1' then
