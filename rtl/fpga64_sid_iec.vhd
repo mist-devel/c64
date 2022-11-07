@@ -823,8 +823,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 			addr => cpuAddr,
 			do => cpuDo,
 			we => cpuWe,
-			
-			diIO => cpuIO(7) & cpuIO(6) & cpuIO(5) & cass_sense & cpuIO(3) & "111",
+
+			diIO => cpuIO(7) & cpuIO(6) & '0' & cass_sense & cpuIO(3) & "111",
 			doIO => cpuIO
 		);
 
