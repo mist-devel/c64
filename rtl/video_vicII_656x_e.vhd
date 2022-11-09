@@ -63,6 +63,8 @@ entity video_vicii_656x is
 		-- Video output
 		hSync : out std_logic;
 		vSync : out std_logic;
+		hBlank: out std_logic;
+		vBlank: out std_logic;
 		colorIndex : out unsigned(3 downto 0);
 		border: out std_logic;
 

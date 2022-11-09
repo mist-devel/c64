@@ -489,10 +489,6 @@ end component progressbar;
 	signal hblank : std_logic;
 	signal vblank : std_logic;
 
-	signal old_vsync : std_logic;
-	signal hsync_out : std_logic;
-	signal vsync_out : std_logic;
-	
 	signal audio_data_l : std_logic_vector(17 downto 0);
 	signal audio_data_r : std_logic_vector(17 downto 0);
 	signal audio_data_l_mix : std_logic_vector(17 downto 0);
@@ -1202,6 +1198,8 @@ begin
 		ntscInitMode => ntsc_init_mode,
 		hsync => hsync,
 		vsync => vsync,
+		hblank => hblank,
+		vblank => vblank,
 		r => r,
 		g => g,
 		b => b,
@@ -1513,17 +1511,6 @@ begin
 		pix => progress
 	);
 
-	comp_sync : entity work.composite_sync
-	port map(
-		clk32 => clk_c64,
-		hsync => hsync,
-		vsync => vsync,
-		ntsc  => ntsc_init_mode,
-		hsync_out => hsync_out,
-		vsync_out => vsync_out,
-		hblank => hblank,
-		vblank => vblank
-	);
 	blank <= hblank or vblank;
 
 	c64_r <= (others => '0') when blank = '1' else std_logic_vector(r(7 downto 2));
@@ -1551,8 +1538,8 @@ begin
 		SPI_SS3     => SPI_SS3,
 		SPI_DI      => SPI_DI,
 
-		HSync       => not hsync_out,
-		VSync       => not vsync_out,
+		HSync       => not hsync,
+		VSync       => not vsync,
 		R           => c64_r or (progress&progress&progress&progress&progress&progress),
 		G           => c64_g or (progress&progress&progress&progress&progress&progress),
 		B           => c64_b or (progress&progress&progress&progress&progress&progress),

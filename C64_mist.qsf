@@ -376,7 +376,6 @@ set_global_assignment -name VERILOG_FILE rtl/acia.v
 set_global_assignment -name VHDL_FILE rtl/rom_c64_chargen.vhd
 set_global_assignment -name VHDL_FILE rtl/io_ps2_keyboard.vhd
 set_global_assignment -name VHDL_FILE rtl/gen_ram.vhd
-set_global_assignment -name VHDL_FILE rtl/composite_sync.vhd
 set_global_assignment -name VHDL_FILE rtl/sid/wave_map.vhd
 set_global_assignment -name VHDL_FILE rtl/sid/sid_top.vhd
 set_global_assignment -name VHDL_FILE rtl/sid/sid_regs.vhd

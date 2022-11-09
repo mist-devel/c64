@@ -106,8 +106,6 @@ architecture rtl of video_vicii_656x is
 	signal TBBorder: std_logic;
 	signal setTBBorder: boolean;
 	signal hBlack: std_logic;
-	signal vBlanking : std_logic;
-	signal hBlanking : std_logic;
 	signal xscroll: unsigned(2 downto 0);
 	signal yscroll: unsigned(2 downto 0);
 	signal rasterCmp : unsigned(8 downto 0);
@@ -214,8 +212,6 @@ begin
 -- -----------------------------------------------------------------------
 	ba <= baLoc;
 	vicAddr <= vicAddrReg when registeredAddress else vicAddrLoc;
-	hSync <= hBlanking;
-	vSync <= vBlanking;
 	irq_n <= not IRQ;
 	border <= TBBorder;
 	turbo_switch <= turbo_reg;
@@ -809,25 +805,50 @@ lightPen: process(clk)
 	end process;
 
 -- -----------------------------------------------------------------------
--- VSync
+-- VBlank/VSync
 -- -----------------------------------------------------------------------
 doVBlanking: process(clk, mode6569, mode6567old, mode6567R8)
-		variable rasterBlank : integer range 0 to 300;
+		variable rasterBlankStart : integer range 0 to 312;
+		variable rasterBlankEnd : integer range 0 to 312;
+		variable rasterSyncStart : integer range 0 to 312;
+		variable rasterSyncEnd : integer range 0 to 312;
 	begin
-		rasterBlank := 300;
+		rasterBlankStart := 300;
 		if (mode6567old or mode6567R8) = '1' then
-			rasterBlank := 12;
+			rasterBlankStart := 13;
+		end if;
+		rasterBlankEnd := 16;
+		if (mode6567old or mode6567R8) = '1' then
+			rasterBlankEnd := 25;
 		end if;
 		if rising_edge(clk) then
-			vBlanking <= '0';
-			if rasterY = rasterBlank then
-				vBlanking <= '1';
+			if rasterY = rasterBlankStart then
+				vBlank <= '1';
+            elsif rasterY = rasterBlankEnd then
+				vBlank <= '0';
 			end if;
 		end if;
+
+		rasterSyncStart := 308;
+		if (mode6567old or mode6567R8) = '1' then
+			rasterSyncStart := 17;
+		end if;
+		rasterSyncEnd := 1;
+		if (mode6567old or mode6567R8) = '1' then
+			rasterSyncEnd := 20;
+		end if;
+		if rising_edge(clk) then
+			if rasterY = rasterSyncStart then
+				vSync <= '1';
+            elsif rasterY = rasterSyncEnd then
+				vSync <= '0';
+			end if;
+		end if;
+
 	end process;
 
 -- -----------------------------------------------------------------------
--- HSync
+-- HBlank/HSync
 -- -----------------------------------------------------------------------
 doHBlanking: process(clk)
 	begin
@@ -840,9 +861,14 @@ doHBlanking: process(clk)
 					hBlack <= '0';
 				end if;
 				if rasterX = 396 then -- from VIC II datasheet
-					hBlanking <= '1';
+					hBlank <= '1';
 				elsif rasterX = 496 then -- from VIC II datasheet
-					hBlanking <= '0';
+					hBlank <= '0';
+				end if;
+				if rasterX = 416 then -- from VIC II datasheet
+					hSync <= '1';
+				elsif rasterX = 452 then -- from VIC II datasheet
+					hSync <= '0';
 				end if;
 			end if;
 		end if;

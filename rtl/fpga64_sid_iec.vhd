@@ -63,6 +63,8 @@ entity fpga64_sid_iec is
 		ntscInitMode: in  std_logic;
 		hsync       : out std_logic;
 		vsync       : out std_logic;
+		hblank      : out std_logic;
+		vblank      : out std_logic;
 		r           : out unsigned(7 downto 0);
 		g           : out unsigned(7 downto 0);
 		b           : out unsigned(7 downto 0);
@@ -282,14 +284,9 @@ architecture rtl of fpga64_sid_iec is
 	signal vicColorIndex : unsigned(3 downto 0);
 	signal vicHSync : std_logic;
 	signal vicVSync : std_logic;
+	signal vicHBlank : std_logic;
+	signal vicVBlank : std_logic;
 
-	signal vgaColorIndex : unsigned(3 downto 0);
-	alias vgaColorIndex_int : std_logic_vector is std_logic_vector(vgaColorIndex);
-	signal vgaR : unsigned(7 downto 0);
-	signal vgaG : unsigned(7 downto 0);
-	signal vgaB : unsigned(7 downto 0);
-	signal vgaVSync : std_logic;
-	signal vgaHSync : std_logic;
 	signal debuggerOn : std_logic;
 	signal traceStep : std_logic;
 	
@@ -452,6 +449,8 @@ begin
 
 	hSync <= vicHSync;
 	vSync <= vicVSync;
+	hBlank <= vicHBlank;
+	vBlank <= vicVBlank;
 
 	c64colors: entity work.fpga64_rgbcolor
 		port map (
@@ -616,8 +615,10 @@ begin
 			vicAddr => vicAddr(13 downto 0),
 			addrValid => addrValidVic,
 
-			hsync => vicHSync,
-			vsync => vicVSync,
+			hSync => vicHSync,
+			vSync => vicVSync,
+			hBlank => vicHBlank,
+			vBlank => vicVBlank,
 			colorIndex => vicColorIndex,
 			border => border,
 
