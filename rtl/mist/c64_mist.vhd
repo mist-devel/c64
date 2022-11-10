@@ -129,6 +129,7 @@ constant CONF_STR : string :=
 	"P2O4,CIA Model,6256,8521;"&
 	"P2OAB,Turbo,Off,Software Switchable,On;"&
 	"P2OKM,REU,Off,512K,1MB,2MB,4MB,8MB,16MB;"&
+	"T1,Reset;"&
 	"T5,Reset & Detach Cartridge;"&
 	"V,v"&BUILD_DATE;
 
@@ -405,6 +406,7 @@ end component progressbar;
 	signal st_cia_mode         : std_logic;                    -- status(4)
 	signal st_swap_joystick    : std_logic;                    -- status(3)
 	signal st_ntsc             : std_logic;                    -- status(2)
+	signal st_normal_reset     : std_logic;                    -- status(1)
 	signal st_reset            : std_logic;                    -- status(0)
 
 	signal sd_lba         : std_logic_vector(31 downto 0);
@@ -643,6 +645,7 @@ begin
 	st_cia_mode         <= status(4);
 	st_swap_joystick    <= status(3);
 	st_ntsc             <= status(2);
+	st_normal_reset     <= status(1) or buttons(1);
 	st_reset            <= status(0);
 
 	data_io_d: data_io
@@ -883,7 +886,7 @@ begin
 			end if;
 
 			-- cart removed
-			if st_detach_cartdrige='1' or buttons(1)='1' then
+			if st_detach_cartdrige = '1' or st_reset = '1' then
 				cart_attached <= '0';
 				erase_cartram <= '1';
 			end if;
@@ -1054,11 +1057,12 @@ begin
 	begin
 		if rising_edge(clk_c64) then
 			-- Reset by:
-			-- Button at device, IO controller reboot, OSD or FPGA startup
+			-- IO controller reboot, OSD or FPGA startup
 			if st_reset = '1' or pll_locked = '0' then
 				reset_counter <= 1000000;
 				reset_n <= '0';
-			elsif buttons(1)='1' or st_detach_cartdrige='1' or reset_crt='1' or
+			-- reset from cartridge, button, OSD
+			elsif st_detach_cartdrige='1' or reset_crt='1' or st_normal_reset = '1' or
 			(ioctl_download='1' and (ioctl_index = FILE_BOOT or ioctl_index = FILE_ROM or ioctl_index = FILE_CRT)) then 
 				-- hard reset
 				reset_counter <= 255;
