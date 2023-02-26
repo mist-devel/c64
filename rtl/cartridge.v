@@ -29,6 +29,8 @@ module cartridge
 
 	input  [15:0] c64_mem_address_in,	// address from cpu
 	input   [7:0] c64_data_out,			// data from cpu going to sdram
+	output reg [7:0] data_out,             // IO data out
+	output reg    data_oe,              // IO data output enable
 
 	output [23:0] sdram_address_out, 	// translated address output
 	output        exrom,						// exrom line
@@ -61,6 +63,9 @@ reg    game_overide;
 assign exrom = ~cart_attached | exrom_overide;
 assign game  = ~cart_attached | game_overide;
 
+reg allow_bank;
+reg reu_map;
+reg clock_port;
 (* ramstyle = "logic" *) reg [6:0] lobanks[0:63];
 (* ramstyle = "logic" *) reg [6:0] hibanks[0:63];
 
@@ -108,6 +113,7 @@ wire freeze_ack = (nmi & ~old_nmiack & nmi_ack);
 
 // 0018 - EXROM line status
 // 0019 - GAME line status
+reg        cart_disable = 0;
 
 always @(posedge clk32) begin
 	reg        init_n = 0;
@@ -115,7 +121,6 @@ always @(posedge clk32) begin
 	reg        saved_d6 = 0;
 	reg [15:0] count;
 	reg        count_ena;
-	reg        cart_disable = 0;
 
 	old_freeze <= freeze_key;
 	if(freeze_req & allow_freeze) nmi <= 1;
@@ -489,6 +494,71 @@ always @(posedge clk32) begin
 				end
 			end
 
+		// Retro Replay - (64k 8x8k banks + 32K RAM)
+		36: begin
+				IOE_ena    <= allow_freeze;
+				IOF_ena    <= allow_freeze & ~reu_map;
+				IOE_wr_ena <= allow_freeze & romL_we;
+				IOF_wr_ena <= allow_freeze & romL_we & ~reu_map;
+				bank_lo    <= ~romL_we ? bank_hi : allow_bank ? bank_hi[1:0] : 2'b00;
+				IOE_bank   <= ~romL_we ? bank_hi : allow_bank ? bank_hi[1:0] : 2'b00;
+				IOF_bank   <= ~romL_we ? bank_hi : allow_bank ? bank_hi[1:0] : 2'b00;
+
+				if(nmi) allow_freeze <= 0;
+				if(!init_n || freeze_ack) begin
+					cart_disable  <= 0;
+					exrom_overide <= 1;
+					game_overide  <= 0;
+					romL_we       <= 0;
+					bank_lo       <= 0;
+					bank_hi       <= 0;
+					IOE_ena       <= 0;
+					IOF_ena       <= 0;
+					IOE_wr_ena    <= 0;
+					IOF_wr_ena    <= 0;
+					IOE_bank      <= 0;
+					IOF_bank      <= 0;
+					if(~init_n) begin
+						exrom_overide <= 0;
+						game_overide  <= 1;
+						reu_map       <= 0;
+						allow_bank    <= 0;
+						clock_port    <= 0;
+					end
+				end
+				else if(cart_disable) begin
+					exrom_overide <= 1;
+					game_overide  <= 1;
+					IOE_wr_ena    <= 0;
+					IOF_wr_ena    <= 0;
+					IOE_ena       <= 0;
+					IOF_ena       <= 0;
+					romL_we       <= 0;
+					allow_freeze  <= 1;
+				end else begin
+
+					if(ioe_wr & !c64_mem_address_in[7:1]) begin
+						bank_hi <= {c64_data_out[7],c64_data_out[4:3]};
+
+						if(~c64_mem_address_in[0]) begin
+							cart_disable <= c64_data_out[2];
+						end
+						else begin
+							if(c64_data_out[6]) reu_map    <= 1;
+							if(c64_data_out[1]) allow_bank <= 1;
+							clock_port <= c64_data_out[0];
+						end
+
+						if((c64_data_out[6] | allow_freeze) & ~c64_mem_address_in[0]) begin
+							allow_freeze  <= 1;
+							game_overide  <= ~c64_data_out[0];
+							exrom_overide <=  c64_data_out[1];
+							romL_we       <=  c64_data_out[5];
+						end
+					end
+				end
+			end
+
 		// prophet64
 		43: begin
 				if(!init_n) begin
@@ -549,7 +619,7 @@ end
 wire ioe_ce = (IOE && (mem_write ? IOE_wr_ena : IOE_ena));
 wire iof_ce = (IOF && (mem_write ? IOF_wr_ena : IOF_ena));
 
-assign mem_ce_out = mem_ce | ioe_ce | iof_ce;
+assign mem_ce_out = !data_oe & (mem_ce | ioe_ce | iof_ce);
 
 //RAM banks are remapped to 64K-128K space
 always @(*) begin
@@ -566,6 +636,18 @@ always @(*) begin
 
 		if(UMAXromH && !mem_write) addr_out[23:12] = {1'b1, bank_hi, 1'b1}; // ULTIMAX CharROM
 	end
+end
+
+always @(*) begin
+	data_oe = 0;
+	data_out = 0;
+	case(cart_id)
+		36: if(IOE && !(c64_mem_address_in[7:0] & (clock_port ? 8'hF0 : 8'hFE)) && ~cart_disable) begin
+			data_oe = 1;
+			data_out = (!c64_mem_address_in[7:1]) ? {bank_hi[2], reu_map, 1'b0, bank_hi[1:0], 1'b0, allow_bank, 1'b0} : 8'h00;
+		end
+		default:;
+	endcase
 end
 
 endmodule

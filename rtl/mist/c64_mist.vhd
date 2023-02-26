@@ -227,6 +227,8 @@ component cartridge port
 
 	c64_mem_address_in: in std_logic_vector(15 downto 0);	-- address from cpu
 	c64_data_out: in std_logic_vector(7 downto 0);			-- data from cpu going to sdram
+	data_out : out std_logic_vector(7 downto 0);            -- IO data out
+	data_oe : out std_logic;                                -- IO data output enable
 
 	sdram_address_out: out std_logic_vector(23 downto 0); -- translated address output
 	exrom       : out std_logic;									-- exrom line
@@ -341,6 +343,8 @@ end component progressbar;
 	signal IOF_rom 			: std_logic;
 	signal max_ram 			: std_logic;
 	signal cart_loading 			:  std_logic;
+	signal cart_data_out    : std_logic_vector(7 downto 0);
+	signal cart_data_oe     : std_logic;
 
 	signal cart_hdr_wr	   : std_logic;
 
@@ -699,7 +703,9 @@ begin
 		
 		c64_mem_address_in => c64_addr,
 		c64_data_out => c64_data_out,
-		
+		data_out => cart_data_out,
+		data_oe => cart_data_oe,
+
 		sdram_address_out => c64_addr_temp,
 		exrom	=> exrom,							
 		game => game,
@@ -1134,7 +1140,7 @@ begin
 	            "01";
 	sdram_data_in( 7 downto 0) <= c64_ram_dout when mist_cycle='0' else ioctl_ram_data;
 	sdram_data_in(15 downto 8) <= ioctl_ram_data when mist_cycle = '1' and mist_cycle_wr = '1' else reu_ram_do;
-	c64_data_in <= reu_dout when reu_oe = '1' else midi_data when midi_oe = '1' else sdram_data_out(7 downto 0);
+	c64_data_in <= reu_dout when reu_oe = '1' else midi_data when midi_oe = '1' else cart_data_out when cart_data_oe = '1' else sdram_data_out(7 downto 0);
 	c64_ram_din <= sdram_data_out(7 downto 0);
 
 	reu_ram_di <= sdram_data_out(15 downto 8);
