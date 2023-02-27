@@ -892,7 +892,7 @@ begin
 			end if;
 
 			-- cart removed
-			if st_detach_cartdrige = '1' or st_reset = '1' then
+			if st_detach_cartdrige = '1' then
 				cart_attached <= '0';
 				erase_cartram <= '1';
 			end if;
@@ -1059,13 +1059,16 @@ begin
 		locked => pll_locked
 	);
 
-	process(clk_c64)
+	process(clk_c64, pll_locked)
 	begin
-		if rising_edge(clk_c64) then
-			-- Reset by:
-			-- IO controller reboot, OSD or FPGA startup
-			if st_reset = '1' or pll_locked = '0' then
-				reset_counter <= 1000000;
+		-- FPGA startup
+		if pll_locked = '0' then
+			reset_n <= '0';
+			reset_counter <= 1000000;
+		elsif rising_edge(clk_c64) then
+			-- Reset by IO controller reboot
+			if st_reset = '1' then
+				reset_counter <= 10000;
 				reset_n <= '0';
 			-- reset from cartridge, button, OSD
 			elsif st_detach_cartdrige='1' or reset_crt='1' or st_normal_reset = '1' or
