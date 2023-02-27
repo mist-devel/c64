@@ -498,6 +498,7 @@ begin
 		clk => clk32,
 		reset => reset,
 		cpuHasBus => cpuHasBus,
+		aec => aecLoc,
 
 		bankSwitch => cpuIO(2 downto 0),
 
@@ -574,8 +575,8 @@ begin
 	-- In the first three cycles after BA went low, the VIC reads
 	-- $ff as character pointers and
 	-- as color information the lower 4 bits of the opcode after the access to $d011.
-	vicDiAec <= vicBus when cpuHasBus = '1' and baVic = '0' else vicDi;
-	colorDataAec <= cpuDi(3 downto 0) when cpuHasBus = '1' and baVic = '0' else colorData;
+	vicDiAec <= vicBus when aecLoc = '1' else vicDi;
+	colorDataAec <= cpuDi(3 downto 0) when aecLoc = '1' else colorData;
 
 	vic: entity work.video_vicii_656x
 		generic map (
