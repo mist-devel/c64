@@ -865,7 +865,7 @@ begin
 			-- PRG download finished, start updating system variables
 			if old_download ='1' and ioctl_download = '0' and ioctl_index = FILE_PRG then
 				ioctl_load_addr <= (others => '0');
-				prg_end <= ioctl_ram_addr(15 downto 0);
+				prg_end <= ioctl_ram_addr(15 downto 0) + 1;
 				prg_reg_update <= '1';
 			end if;
 
