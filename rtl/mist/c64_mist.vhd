@@ -124,6 +124,7 @@ constant CONF_STR : string :=
 	"P1O6,Audio filter,On,Off;"&
 	"P1ONP,Midi,Off,Sequential Inc.,Passport/Sentech,DATEL/SIEL/JMS/C-LAB,Namesoft;"&
 	"P2O3,Joysticks,Normal,Swapped;"&
+	"P2OST,Mouse,Off,Port 1,Port 2;"&
 	"P2OG,Disk Write,Enable,Disable;"&
 	"P2OQR,Userport,4-player IF,UART,UP9600;"&
 	"P2O4,CIA Model,6256,8521;"&
@@ -394,7 +395,8 @@ end component progressbar;
 
 	signal status         : std_logic_vector(63 downto 0);
   
-	-- status(1) and status(12) are not used
+	-- status(7) and status(12) are not used
+	signal st_mouse_port       : std_logic_vector(1 downto 0); -- status(29 downto 28)
 	signal st_user_port        : std_logic_vector(1 downto 0); -- status(27 downto 26)
 	signal st_midi             : std_logic_vector(2 downto 0); -- status(23 downto 25)
 	signal st_reu              : std_logic_vector(2 downto 0); -- status(22 downto 20)
@@ -634,6 +636,7 @@ begin
 		mouse_strobe => mouse_strobe
 	);
 
+	st_mouse_port       <= status(29 downto 28);
 	st_user_port        <= status(27 downto 26);
 	st_midi             <= status(25 downto 23);
 	st_reu              <= status(22 downto 20);
@@ -736,6 +739,9 @@ begin
 		RX      => midi_rx,
 		TX      => midi_tx
 	);
+
+	mouse1_en <= '1' when st_mouse_port = "01" else '0';
+	mouse2_en <= '1' when st_mouse_port = "10" else '0';
 
 	-- rearrange joystick contacta for c64
 	joyA_int <= joyA(6 downto 5) & (joyA(4) or (mouse1_en and mouse_btns(0))) & joyA(0) & joyA(1) & joyA(2) & (joyA(3) or (mouse1_en and mouse_btns(1)));
@@ -1301,21 +1307,14 @@ begin
 		if reset_n = '0' then
 			mouse_x_pos <= (others => '0');
 			mouse_y_pos <= (others => '0');
-			mouse1_en <= '1';
-			mouse2_en <= '1';
 		elsif rising_edge(clk_c64) then
 			if mouse_strobe = '1' then
-				mouse1_en <= '1';
-				mouse2_en <= '1';
 				-- due to limited resolution on the c64 side, limit the mouse movement speed
 				if mouse_x > 40 then mov_x:="0101000"; elsif mouse_x < -40 then mov_x:= "1011000"; else mov_x := mouse_x(6 downto 0); end if;
 				if mouse_y > 40 then mov_y:="0101000"; elsif mouse_y < -40 then mov_y:= "1011000"; else mov_y := mouse_y(6 downto 0); end if;
 				mouse_x_pos <= mouse_x_pos + mov_x;
 				mouse_y_pos <= mouse_y_pos + mov_y;
 				mouse_btns <= mouse_flags(1 downto 0);
-			else
-				if joya(7 downto 0) /= 0 then mouse1_en <= '0'; end if;
-				if joyb(7 downto 0) /= 0 then mouse2_en <= '0'; end if;
 			end if;
 		end if;
 	end process;
