@@ -83,31 +83,32 @@ reg        cnt_out_prev;
 reg [ 2:0] cnt_pulsecnt;
 
 reg        int_reset;
+reg        irq_d;
 
 wire       rd = phi2_n & !cs_n & rw;
 wire       wr = phi2_n & !cs_n & !rw;
 
 // Register Decoding
-always @(posedge clk) begin
-  if (!res_n) db_out <= 8'h00;
-  else if (rd)
+always @(*) begin
+  if (!res_n) db_out = 8'h00;
+  else
     case (rs)
-      4'h0: db_out <= pa_in;
-      4'h1: db_out <= pb_in;
-      4'h2: db_out <= ddra;
-      4'h3: db_out <= ddrb;
-      4'h4: db_out <= timer_a[ 7:0];
-      4'h5: db_out <= timer_a[15:8];
-      4'h6: db_out <= timer_b[ 7:0];
-      4'h7: db_out <= timer_b[15:8];
-      4'h8: db_out <= {4'h0, tod_latch[3:0]};
-      4'h9: db_out <= {1'b0, tod_latch[10:4]};
-      4'ha: db_out <= {1'b0, tod_latch[17:11]};
-      4'hb: db_out <= {tod_latch[23], 2'h0, tod_latch[22:18]};
-      4'hc: db_out <= sdr;
-      4'hd: db_out <= {~irq_n, 2'b00, icr};
-      4'he: db_out <= {cra[7:5], 1'b0, cra[3:0]};
-      4'hf: db_out <= {crb[7:5], 1'b0, crb[3:0]};
+      4'h0: db_out = pa_in;
+      4'h1: db_out = pb_in;
+      4'h2: db_out = ddra;
+      4'h3: db_out = ddrb;
+      4'h4: db_out = timer_a[ 7:0];
+      4'h5: db_out = timer_a[15:8];
+      4'h6: db_out = timer_b[ 7:0];
+      4'h7: db_out = timer_b[15:8];
+      4'h8: db_out = {4'h0, tod_latch[3:0]};
+      4'h9: db_out = {1'b0, tod_latch[10:4]};
+      4'ha: db_out = {1'b0, tod_latch[17:11]};
+      4'hb: db_out = {tod_latch[23], 2'h0, tod_latch[22:18]};
+      4'hc: db_out = sdr;
+      4'hd: db_out = {~irq_d, 2'b00, icr};
+      4'he: db_out = {cra[7:5], 1'b0, cra[3:0]};
+      4'hf: db_out = {crb[7:5], 1'b0, crb[3:0]};
     endcase
 end
 
@@ -475,21 +476,21 @@ always @(posedge clk) begin
 end
 
 wire [4:0] icr_adj = {icr[4:2], timer_b_int, icr[0]};
+reg  [4:0] imr_reg;
 
 // Interrupt Control
 always @(posedge clk) begin
-  reg  [4:0] imr_reg;
-
   if (!res_n) begin
     imr       <= 5'h00;
     imr_reg   <= 5'h00;
     irq_n     <= 1'b1;
+    irq_d     <= 1'b1;
     int_reset <= 0;
   end
   else begin
-    if (!mode & phi2_n & int_reset) begin
-      irq_n <= 1;
+    if (phi2_n & int_reset) begin
       int_reset <= 0;
+      irq_d <= 1;
     end
 
     if (wr && rs == 4'hd) imr_reg <= db_in[7] ? imr | db_in[4:0] : imr & ~db_in[4:0];
@@ -498,12 +499,11 @@ always @(posedge clk) begin
     if (phi2_p | mode) begin
       imr <= imr_reg;
       irq_n <= irq_n ? ~|(imr & icr_adj) : irq_n;
+      irq_d <= irq_d ? ~|(imr & icr_adj) : irq_d;
     end
 
-    if (mode & phi2_p & int_reset) begin
-      irq_n <= 1;
-      int_reset <= 0;
-    end
+    if (phi2_p & int_reset) irq_n <= 1;
+
   end
 end
 

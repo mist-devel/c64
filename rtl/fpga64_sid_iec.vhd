@@ -425,18 +425,16 @@ begin
 				if turbo = '1' then
 					enableCpu <= '1';
 				end if;
+				enableCia_p <= '1';
 				turbo_dis <= '0';
 			when CYCLE_CPUE =>
 				enableVic <= '1';
 				enableCpu <= '1';
+				enableCia_n <= '1';
 				turbo_en_sync <= turbo_en;
 				if dma_n = '0' or cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' or cs_ioE = '1' or cs_ioF = '1' then
 					turbo_dis <= '1'; -- stretch the CPU clock when a peripheral is selected
 				end if;
-			when CYCLE_CPUC =>
-				enableCia_n <= '1';
-			when CYCLE_CPUF =>
-				enableCia_p <= '1';
 			when CYCLE_IDLE1 =>
 				if dma_n = '0' or cs_color = '1' or cs_vic = '1' or cs_cia1 = '1' or cs_cia2 = '1' or cs_sid = '1' or cs_ioE = '1' or cs_ioF = '1' then
 					turbo_dis <= '1'; -- stretch the CPU clock when a peripheral is selected
