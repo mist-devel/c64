@@ -29,10 +29,16 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.ALL;
 use IEEE.numeric_std.all;
-use work.build_id.all;
 use work.mist.ALL;
 
-entity c64_mist is port
+entity c64_mist is 
+generic
+(
+   VGA_BITS   : integer := 6;
+   DIRECT_UPLOAD : boolean := true;
+   BUILD_DATE : string :=""
+);
+port
 (
 	-- Clocks
    CLOCK_27   : in    std_logic;
@@ -41,9 +47,9 @@ entity c64_mist is port
    LED        : out   std_logic;
 
    -- VGA
-   VGA_R      : out   std_logic_vector(5 downto 0);
-   VGA_G      : out   std_logic_vector(5 downto 0);
-   VGA_B      : out   std_logic_vector(5 downto 0);
+   VGA_R      : out   std_logic_vector(VGA_BITS-1 downto 0);
+   VGA_G      : out   std_logic_vector(VGA_BITS-1 downto 0);
+   VGA_B      : out   std_logic_vector(VGA_BITS-1 downto 0);
    VGA_HS     : out   std_logic;
    VGA_VS     : out   std_logic;
 
@@ -248,7 +254,7 @@ end component cartridge;
 component progressbar
 generic
 (
-	X_OFFSET : in integer := 100;
+	X_OFFSET : in integer := 130;
 	Y_OFFSET : in integer := 20
 );
 port
@@ -385,16 +391,12 @@ end component progressbar;
 	signal potB_x   : std_logic_vector(7 downto 0);
 	signal potB_y   : std_logic_vector(7 downto 0);
 	signal reset_key : std_logic;
-	
-	signal c64_r  : std_logic_vector(5 downto 0);
-	signal c64_g  : std_logic_vector(5 downto 0);
-	signal c64_b  : std_logic_vector(5 downto 0);
 
 	signal conf_str_addr : std_logic_vector(9 downto 0);
 	signal conf_str_char : std_logic_vector(7 downto 0);
 
 	signal status         : std_logic_vector(63 downto 0);
-  
+
 	-- status(7) and status(12) are not used
 	signal st_mouse_port       : std_logic_vector(1 downto 0); -- status(29 downto 28)
 	signal st_user_port        : std_logic_vector(1 downto 0); -- status(27 downto 26)
@@ -494,7 +496,6 @@ end component progressbar;
 	signal b : unsigned(7 downto 0);
 	signal hsync : std_logic;
 	signal vsync : std_logic;
-	signal blank : std_logic;
 	signal hblank : std_logic;
 	signal vblank : std_logic;
 
@@ -520,7 +521,7 @@ end component progressbar;
 	signal tap_version    : std_logic_vector(1 downto 0);
 	signal tap_playstop_key : std_logic;
 	signal progress       : std_logic;
-	signal progress_ce_pix: std_logic;
+	signal progress_ce_pix: std_logic_vector(1 downto 0);
 
 	signal reset_counter    : integer;
 	signal reset_n          : std_logic;
@@ -588,7 +589,7 @@ begin
 	user_io_d : user_io
 	generic map (
 		--STRLEN => CONF_STR'length,
-		ROM_DIRECT_UPLOAD => true,
+		ROM_DIRECT_UPLOAD => DIRECT_UPLOAD,
 		PS2DIV => 1000
 	)
 	port map (
@@ -656,6 +657,9 @@ begin
 	st_reset            <= status(0);
 
 	data_io_d: data_io
+	generic map (
+		ROM_DIRECT_UPLOAD => DIRECT_UPLOAD
+	)
 	port map (
 		clk_sys => clk_c64,
 		SPI_SCK => SPI_SCK,
@@ -1511,14 +1515,14 @@ begin
 	process(clk_c64)
 	begin
 		if rising_edge(clk_c64) then
-			progress_ce_pix <= not progress_ce_pix;
+			progress_ce_pix <= progress_ce_pix + 1;
 		end if;
 	end process;
 
 	bar : progressbar
 	port map(
 		clk => clk_c64,
-		ce_pix => progress_ce_pix,
+		ce_pix => progress_ce_pix(1) and progress_ce_pix(0),
 		hblank => hblank,
 		vblank => vblank,
 		enable => not cass_run and st_tape_progress,
@@ -1527,19 +1531,14 @@ begin
 		pix => progress
 	);
 
-	blank <= hblank or vblank;
-
-	c64_r <= (others => '0') when blank = '1' else std_logic_vector(r(7 downto 2));
-	c64_g <= (others => '0') when blank = '1' else std_logic_vector(g(7 downto 2));
-	c64_b <= (others => '0') when blank = '1' else std_logic_vector(b(7 downto 2));
-
 	mist_video : work.mist.mist_video
 	generic map (
 		SD_HCNT_WIDTH => 10,
-		COLOR_DEPTH => 6,
+		COLOR_DEPTH => 8,
 		OSD_COLOR => "011",
-		OSD_X_OFFSET => "00"&x"10",
-		OSD_AUTO_CE => false
+		OSD_AUTO_CE => false,
+		USE_BLANKS => true,
+		OUT_COLOR_DEPTH => VGA_BITS
 	)
 	port map (
 		clk_sys     => clk_c64,
@@ -1556,9 +1555,11 @@ begin
 
 		HSync       => not hsync,
 		VSync       => not vsync,
-		R           => c64_r or (progress&progress&progress&progress&progress&progress),
-		G           => c64_g or (progress&progress&progress&progress&progress&progress),
-		B           => c64_b or (progress&progress&progress&progress&progress&progress),
+		HBlank      => hblank,
+		VBlank      => vblank,
+		R           => std_logic_vector(r) or (progress&progress&progress&progress&progress&progress&progress&progress),
+		G           => std_logic_vector(g) or (progress&progress&progress&progress&progress&progress&progress&progress),
+		B           => std_logic_vector(b) or (progress&progress&progress&progress&progress&progress&progress&progress),
 
 		VGA_HS      => VGA_HS,
 		VGA_VS      => VGA_VS,

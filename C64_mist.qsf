@@ -118,6 +118,8 @@ set_location_assignment PIN_66 -to SDRAM_nWE
 set_location_assignment PIN_59 -to SDRAM_nCS
 set_location_assignment PIN_33 -to SDRAM_CKE
 set_location_assignment PIN_43 -to SDRAM_CLK
+set_location_assignment PIN_46 -to UART_TX
+set_location_assignment PIN_31 -to UART_RX
 set_location_assignment PLL_1 -to "pll:pll|altpll:altpll_component"
 
 # Classic Timing Assignments
@@ -129,7 +131,7 @@ set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 # ================================
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE BALANCED
 set_global_assignment -name FAMILY "Cyclone III"
-set_global_assignment -name TOP_LEVEL_ENTITY c64_mist
+set_global_assignment -name TOP_LEVEL_ENTITY c64_mist_top
 set_global_assignment -name DEVICE_FILTER_PACKAGE TQFP
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 144
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
@@ -168,7 +170,7 @@ set_global_assignment -name USE_CONFIGURATION_DEVICE OFF
 # SignalTap II Assignments
 # ========================
 set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE output_files/acia.stp
+set_global_assignment -name USE_SIGNALTAP_FILE output_files/cia2dd0test.stp
 
 # Power Estimation Assignments
 # ============================
@@ -260,6 +262,7 @@ set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[15]
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SPI_DO
 set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SPI_DO
 set_instance_assignment -name FAST_INPUT_REGISTER ON -to SPI_DO
+set_instance_assignment -name FAST_INPUT_REGISTER ON -to UART_RX
 
 # Fitter Assignments
 # ==================
@@ -327,6 +330,8 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to AUDIO_L
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to AUDIO_R
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to SPI_DO
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to CONF_DATA0
+set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to UART_TX
+
 
 # start DESIGN_PARTITION(Top)
 # ---------------------------
@@ -343,71 +348,14 @@ set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name AUTO_SHIFT_REGISTER_RECOGNITION OFF
-set_location_assignment PIN_46 -to UART_TX
-set_location_assignment PIN_31 -to UART_RX
-set_location_assignment PLL_1 -to pll|altpll_component|auto_generated|pll1
-set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to UART_TX
-
-set_instance_assignment -name FAST_INPUT_REGISTER ON -to UART_RX
 set_global_assignment -name ALLOW_ANY_RAM_SIZE_FOR_RECOGNITION ON
 set_global_assignment -name ALLOW_ANY_ROM_SIZE_FOR_RECOGNITION ON
 set_global_assignment -name DSP_BLOCK_BALANCING "DSP BLOCKS"
-set_global_assignment -name VHDL_FILE build_id.vhd
-set_global_assignment -name VHDL_FILE rtl/tap_fifo.vhd
-set_global_assignment -name VHDL_FILE rtl/c1530.vhd
-set_global_assignment -name VERILOG_FILE rtl/progressbar.v
-set_global_assignment -name VERILOG_FILE rtl/sid8580/sid_voice.v
-set_global_assignment -name VERILOG_FILE rtl/sid8580/sid_filters.v
-set_global_assignment -name VERILOG_FILE rtl/sid8580/sid_envelope.v
-set_global_assignment -name VERILOG_FILE rtl/sid8580/sid8580.v
-set_global_assignment -name VHDL_FILE rtl/fpga64_sid_iec.vhd
-set_global_assignment -name VHDL_FILE rtl/video_vicII_656x_e.vhd
-set_global_assignment -name VHDL_FILE rtl/video_vicII_656x_a.vhd
-set_global_assignment -name VHDL_FILE rtl/fpga64_rgbcolor.vhd
-set_global_assignment -name VHDL_FILE rtl/fpga64_keyboard_matrix_mark_mcdougall.vhd
-set_global_assignment -name VHDL_FILE rtl/fpga64_buslogic_roms_mmu.vhd
-set_global_assignment -name VERILOG_FILE rtl/mos6526.v
-set_global_assignment -name VHDL_FILE rtl/mos6526.vhd
-set_global_assignment -name VHDL_FILE rtl/cpu_6510.vhd
-set_global_assignment -name VHDL_FILE rtl/reu.vhd
-set_global_assignment -name VERILOG_FILE rtl/cartridge.v
-set_global_assignment -name VHDL_FILE rtl/c64_midi.vhd
-set_global_assignment -name VERILOG_FILE rtl/acia.v
-set_global_assignment -name VHDL_FILE rtl/rom_c64_chargen.vhd
-set_global_assignment -name VHDL_FILE rtl/io_ps2_keyboard.vhd
-set_global_assignment -name VHDL_FILE rtl/gen_ram.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/wave_map.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/sid_top.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/sid_regs.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/sid_mixer.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/sid_filter.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/sid_debug_pkg.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/sid_ctrl.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/Q_table.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/oscillator.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/my_math_pkg.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/mult_acc.vhd
-set_global_assignment -name VHDL_FILE rtl/sid/adsr_multi.vhd
-set_global_assignment -name VHDL_FILE rtl/c1541/via6522.vhd
-set_global_assignment -name VHDL_FILE rtl/c1541/spram.vhd
-set_global_assignment -name VHDL_FILE rtl/c1541/spi_controller.vhd
-set_global_assignment -name SYSTEMVERILOG_FILE rtl/c1541/mist_sd_card.sv
-set_global_assignment -name VHDL_FILE rtl/c1541/gen_rom.vhd
-set_global_assignment -name VHDL_FILE rtl/c1541/gcr_floppy.vhd
-set_global_assignment -name VHDL_FILE rtl/c1541/c1541_sd.vhd
-set_global_assignment -name VHDL_FILE rtl/c1541/c1541_logic.vhd
-set_global_assignment -name VHDL_FILE rtl/mist/c64_mist.vhd
-set_global_assignment -name VERILOG_FILE rtl/mist/sigma_delta_dac.v
-set_global_assignment -name VERILOG_FILE rtl/mist/sdram.v
-set_global_assignment -name QIP_FILE rtl/T65/T65.qip
-set_global_assignment -name QIP_FILE "rtl/mist/mist-modules/mist.qip"
-set_global_assignment -name QIP_FILE rtl/mist/pll.qip
-set_global_assignment -name QIP_FILE rtl/mist/pll_c64.qip
-set_global_assignment -name QIP_FILE rtl/mist/pll_c64_reconfig.qip
-set_global_assignment -name QIP_FILE rtl/mist/rom_reconfig_pal.qip
-set_global_assignment -name QIP_FILE rtl/mist/rom_reconfig_ntsc.qip
+set_global_assignment -name VERILOG_FILE build_id.v
+set_global_assignment -name QIP_FILE rtl/fpga64.qip
 set_global_assignment -name SIGNALTAP_FILE output_files/uio.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/reu.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/1541cpu.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/acia.stp
+set_global_assignment -name SIGNALTAP_FILE output_files/cia2dd0test.stp
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
