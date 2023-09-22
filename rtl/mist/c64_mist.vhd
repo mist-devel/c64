@@ -36,6 +36,7 @@ generic
 (
    VGA_BITS   : integer := 6;
    DIRECT_UPLOAD : boolean := true;
+   USE_AUDIO_IN : boolean := false;
    BUILD_DATE : string :=""
 );
 port
@@ -69,6 +70,8 @@ port
    -- AUDIO
    AUDIO_L    : out   std_logic;
    AUDIO_R    : out   std_logic;
+
+   AUDIO_IN   : in    std_logic;
 
    -- SPI interface to io controller
    SPI_SCK    : in    std_logic;
@@ -1362,7 +1365,7 @@ begin
 		end if;
 	end process;
 
-	ear_input <= uart_rxD(1) when st_user_port = "00" and st_midi = "000" else '1';
+	ear_input <= AUDIO_IN when USE_AUDIO_IN else uart_rxD(1) when st_user_port = "00" and st_midi = "000" else '1';
 	midi_rx <= uart_rxD(1) when st_midi /= "000" else '1';
 
 	-- generate TOD clock from stable 32 MHz

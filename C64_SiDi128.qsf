@@ -179,6 +179,8 @@ set_location_assignment PIN_G4 -to I2S_LRCK
 set_location_assignment PIN_F1 -to I2S_BCK
 set_location_assignment PIN_H5 -to I2S_DATA
 
+set_location_assignment PIN_F2 -to AUDIO_IN
+
 # Classic Timing Assignments
 # ==========================
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
@@ -331,6 +333,7 @@ set_global_assignment -name VERILOG_MACRO "NO_DIRECT_UPLOAD=1"
 set_global_assignment -name VERILOG_MACRO "USE_QSPI=1"
 set_global_assignment -name VERILOG_MACRO "DUAL_SDRAM=1"
 set_global_assignment -name VERILOG_MACRO "I2S_AUDIO=1"
+set_global_assignment -name VERILOG_MACRO "USE_AUDIO_IN=1"
 set_global_assignment -name VERILOG_MACRO "VGA_8BIT=1"
 set_global_assignment -name SDC_FILE C64_mist.sdc
 set_global_assignment -name VERILOG_FILE build_id.v
