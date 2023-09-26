@@ -120,7 +120,7 @@ set_location_assignment PIN_33 -to SDRAM_CKE
 set_location_assignment PIN_43 -to SDRAM_CLK
 set_location_assignment PIN_46 -to UART_TX
 set_location_assignment PIN_31 -to UART_RX
-set_location_assignment PLL_1 -to "pll:pll|altpll:altpll_component"
+set_location_assignment PLL_1 -to "c64_mist|pll:pll|altpll:altpll_component"
 
 # Classic Timing Assignments
 # ==========================
