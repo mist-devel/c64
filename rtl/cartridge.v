@@ -383,7 +383,7 @@ always @(posedge clk32) begin
 				if(romL & mem_ce &  c64_mem_address_in[12]) bank_hi <= 2;
 			end
 
-		// Magic Desk - (game=1, exrom=0 = 4/8/16 8k banks)
+		// Magic Desk - (game=1, exrom=0 = 4/8/16 - up to 128 for extended format - 8k banks)
 		19: begin
 				if(!init_n) begin
 					game_overide  <= 1;
@@ -392,8 +392,11 @@ always @(posedge clk32) begin
 				end
 
 				if(ioe_wr) begin
-					bank_lo <= c64_data_out[3:0];
-					exrom_overide <= c64_data_out[7];
+					if(bank_cnt <= 16) bank_lo <= data_in[3:0];
+					else if(bank_cnt <= 32) bank_lo <= data_in[4:0];
+					else if(bank_cnt <= 64) bank_lo <= data_in[5:0];
+					else bank_lo <= data_in[6:0];
+					exrom_overide <= data_in[7];
 				end
 			end
 
