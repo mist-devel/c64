@@ -86,6 +86,14 @@ localparam VGA_BITS = 8;
 localparam VGA_BITS = 6;
 `endif
 
+`ifdef BIG_OSD
+localparam bit BIG_OSD = 1;
+localparam SEP = "-;";
+`else
+localparam bit BIG_OSD = 0;
+localparam SEP = "";
+`endif
+
 `ifdef USE_AUDIO_IN
 localparam bit USE_AUDIO_IN = 1;
 `else
@@ -114,6 +122,7 @@ c64_mist
 	.VGA_BITS(VGA_BITS),
 	.DIRECT_UPLOAD(DIRECT_UPLOAD ? "true" : "false"),
 	.USE_AUDIO_IN(USE_AUDIO_IN ? "true" : "false"),
+	.BIG_OSD(BIG_OSD ? "true" : "false"),
 	.BUILD_DATE(`BUILD_DATE)
 )
 c64_mist (

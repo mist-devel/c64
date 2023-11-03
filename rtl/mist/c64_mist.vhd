@@ -37,6 +37,7 @@ generic
    VGA_BITS   : integer := 6;
    DIRECT_UPLOAD : boolean := true;
    USE_AUDIO_IN : boolean := false;
+   BIG_OSD : boolean := false;
    BUILD_DATE : string :=""
 );
 port
@@ -117,12 +118,25 @@ component sdram is port
 );
 end component;
 
+function SEP return string is
+begin
+	if BIG_OSD then return "-;"; else return ""; end if;
+end function;
+
+function USER_IO_FEAT return std_logic_vector is
+begin
+	if BIG_OSD then return x"00002000"; else return x"00000000"; end if;
+end function;
+
+
 constant CONF_STR : string := 
 	"C64;;"&
 	"S0U,D64G64,Mount Disk;"&
-	"F,CRTPRGTAPREU,Load;"& --2
-	"F,ROM,Load;"& --3
+	"F2,CRTPRGTAPREU,Load;"& --2
+	"F3,ROM,Load;"& --3
+	SEP&
 	"TH,Play/Stop TAP;"&
+	SEP&
 	"P1,Video & Audio;"&
 	"P2,System;"&
 	"P1O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
@@ -139,6 +153,7 @@ constant CONF_STR : string :=
 	"P2O4,CIA Model,6256,8521;"&
 	"P2OAB,Turbo,Off,Software Switchable,On;"&
 	"P2OKM,REU,Off,512K,1MB,2MB,4MB,8MB,16MB;"&
+	SEP&
 	"T1,Reset;"&
 	"T5,Reset & Detach Cartridge;"&
 	"V,v"&BUILD_DATE;
@@ -593,7 +608,8 @@ begin
 	generic map (
 		--STRLEN => CONF_STR'length,
 		ROM_DIRECT_UPLOAD => DIRECT_UPLOAD,
-		PS2DIV => 1000
+		PS2DIV => 1000,
+		FEATURES => USER_IO_FEAT
 	)
 	port map (
 		clk_sys => clk_c64,
@@ -1541,7 +1557,8 @@ begin
 		OSD_COLOR => "011",
 		OSD_AUTO_CE => false,
 		USE_BLANKS => true,
-		OUT_COLOR_DEPTH => VGA_BITS
+		OUT_COLOR_DEPTH => VGA_BITS,
+		BIG_OSD => BIG_OSD
 	)
 	port map (
 		clk_sys     => clk_c64,
