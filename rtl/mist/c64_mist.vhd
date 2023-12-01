@@ -29,7 +29,9 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.ALL;
 use IEEE.numeric_std.all;
-use work.mist.ALL;
+
+library mist;
+use mist.mist.ALL;
 
 entity c64_mist is 
 generic
@@ -38,6 +40,7 @@ generic
    DIRECT_UPLOAD : boolean := true;
    USE_AUDIO_IN : boolean := false;
    BIG_OSD : boolean := false;
+   HDMI : boolean := false;
    BUILD_DATE : string :=""
 );
 port
@@ -54,6 +57,17 @@ port
    VGA_B      : out   std_logic_vector(VGA_BITS-1 downto 0);
    VGA_HS     : out   std_logic;
    VGA_VS     : out   std_logic;
+
+   -- HDMI
+   HDMI_R     : out   std_logic_vector(7 downto 0) := (others => '0');
+   HDMI_G     : out   std_logic_vector(7 downto 0) := (others => '0');
+   HDMI_B     : out   std_logic_vector(7 downto 0) := (others => '0');
+   HDMI_HS    : out   std_logic := '0';
+   HDMI_VS    : out   std_logic := '0';
+   HDMI_DE    : out   std_logic := '0';
+   HDMI_PCLK  : out   std_logic := '0';
+   HDMI_SCL   : inout std_logic;
+   HDMI_SDA   : inout std_logic;
 
    -- SDRAM
    SDRAM_A    : out   std_logic_vector(12 downto 0);
@@ -124,10 +138,13 @@ begin
 end function;
 
 function USER_IO_FEAT return std_logic_vector is
+variable feat: std_logic_vector(31 downto 0);
 begin
-	if BIG_OSD then return x"00002000"; else return x"00000000"; end if;
+  feat := x"00000000";
+	if BIG_OSD then feat := feat or x"00002000"; end if;
+	if HDMI    then feat := feat or x"00004000"; end if;
+	return feat;
 end function;
-
 
 constant CONF_STR : string := 
 	"C64;;"&
@@ -309,6 +326,15 @@ end component progressbar;
 	signal q_reconfig_ntsc : std_logic_vector(0 downto 0);
 	signal pll_rom_q : std_logic;
 	signal pll_reconfig_ena : std_logic;
+
+	signal i2c_start : std_logic;
+	signal i2c_read : std_logic;
+	signal i2c_addr : std_logic_vector(6 downto 0);
+	signal i2c_subaddr : std_logic_vector(7 downto 0);
+	signal i2c_wdata : std_logic_vector(7 downto 0);
+	signal i2c_rdata : std_logic_vector(7 downto 0);
+	signal i2c_end : std_logic;
+	signal i2c_ack : std_logic;
 
 	signal phi: std_logic;
 	signal c1541_reset: std_logic;
@@ -634,6 +660,15 @@ begin
 		scandoubler_disable => tv15Khz_mode,
 		ypbpr => ypbpr,
 		no_csync => no_csync,
+
+		i2c_start => i2c_start,
+		i2c_read => i2c_read,
+		i2c_addr => i2c_addr,
+		i2c_subaddr => i2c_subaddr,
+		i2c_dout => i2c_wdata,
+		i2c_din => i2c_rdata,
+		i2c_end => i2c_end,
+		i2c_ack => i2c_ack,
 
 		sd_lba => sd_lba,
 		sd_rd => sd_rd,
@@ -1164,7 +1199,7 @@ begin
 	-- sdram
 	sdram_addr <= std_logic_vector(unsigned(C64_ROM_START) + c64_rom_addr) when mist_cycle = '0' and rom_ce = '0' else
 	              c64_addr_temp when mist_cycle='0' else
-				  reu_ram_addr when reu_cycle='1' and reu_ram_ce='1' else
+	              reu_ram_addr when reu_cycle='1' and reu_ram_ce='1' else
 	              ioctl_ram_addr when prg_reg_update = '1' or ioctl_download = '1' or erasing = '1' else
 	              tap_play_addr;
 	sdram_bs <= "10" when reu_ram_ce='1' and reu_cycle='1' else
@@ -1550,7 +1585,7 @@ begin
 		pix => progress
 	);
 
-	mist_video : work.mist.mist_video
+	vga_video : mist_video
 	generic map (
 		SD_HCNT_WIDTH => 10,
 		COLOR_DEPTH => 8,
@@ -1587,5 +1622,67 @@ begin
 		VGA_G       => VGA_G,
 		VGA_B       => VGA_B
 	);
+
+hdmi_block : if HDMI generate
+
+	i2c_master_d : i2c_master
+	generic map (
+		CLK_Freq => 32000000
+	)
+	port map (
+		CLK => clk_c64,
+		I2C_START => i2c_start,
+		I2C_READ => i2c_read,
+		I2C_ADDR => i2c_addr,
+		I2C_SUBADDR => i2c_subaddr,
+		I2C_WDATA => i2c_wdata,
+		I2C_RDATA => i2c_rdata,
+		I2C_END => i2c_end,
+		I2C_ACK => i2c_ack,
+		I2C_SCL => HDMI_SCL,
+		I2C_SDA => HDMI_SDA
+	);
+
+	hdmi_video : mist_video
+	generic map (
+		SD_HCNT_WIDTH => 10,
+		COLOR_DEPTH => 8,
+		OSD_COLOR => "011",
+		OSD_AUTO_CE => false,
+		USE_BLANKS => true,
+		OUT_COLOR_DEPTH => 8,
+		BIG_OSD => BIG_OSD
+	)
+	port map (
+		clk_sys     => clk_c64,
+		scanlines   => st_scandoubler_fx,
+		scandoubler_disable => '0',
+		ypbpr       => '0',
+		no_csync    => '1',
+		rotate      => "00",
+		blend       => '0',
+
+		SPI_SCK     => SPI_SCK,
+		SPI_SS3     => SPI_SS3,
+		SPI_DI      => SPI_DI,
+
+		HSync       => not hsync,
+		VSync       => not vsync,
+		HBlank      => hblank,
+		VBlank      => vblank,
+		R           => std_logic_vector(r) or (progress&progress&progress&progress&progress&progress&progress&progress),
+		G           => std_logic_vector(g) or (progress&progress&progress&progress&progress&progress&progress&progress),
+		B           => std_logic_vector(b) or (progress&progress&progress&progress&progress&progress&progress&progress),
+
+		VGA_HS      => HDMI_HS,
+		VGA_VS      => HDMI_VS,
+		VGA_R       => HDMI_R,
+		VGA_G       => HDMI_G,
+		VGA_B       => HDMI_B,
+		VGA_DE      => HDMI_DE
+	);
+
+	HDMI_PCLK <= clk_c64;
+end generate;
 
 end struct;
