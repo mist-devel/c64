@@ -86,6 +86,11 @@ port
    AUDIO_L    : out   std_logic;
    AUDIO_R    : out   std_logic;
 
+   I2S_BCK    : out   std_logic;
+   I2S_LRCK   : out   std_logic;
+   I2S_DATA   : out   std_logic;
+   SPDIF_O    : out   std_logic;
+
    AUDIO_IN   : in    std_logic;
 
    -- SPI interface to io controller
@@ -234,6 +239,33 @@ component sigma_delta_dac port
 
 end component sigma_delta_dac;
 
+component i2s
+generic (
+	I2S_Freq   : integer := 48000;
+	AUDIO_DW   : integer := 16
+);
+port
+(
+	clk        : in    std_logic;
+	reset      : in    std_logic;
+	clk_rate   : in    integer;
+	sclk       : out   std_logic;
+	lrclk      : out   std_logic;
+	sdata      : out   std_logic;
+	left_chan  : in    std_logic_vector(AUDIO_DW-1 downto 0);
+	right_chan : in    std_logic_vector(AUDIO_DW-1 downto 0)
+);
+end component i2s;
+
+component spdif port
+(
+	clk_i      : in    std_logic;
+	rst_i      : in    std_logic;
+	clk_rate_i : in    integer;
+	spdif_o    : out   std_logic;
+	sample_i   : in    std_logic_vector(31 downto 0)
+);
+end component spdif;
 
 --------------------------
 -- cartridge - LCA mar17 -
@@ -326,6 +358,7 @@ end component progressbar;
 	signal q_reconfig_ntsc : std_logic_vector(0 downto 0);
 	signal pll_rom_q : std_logic;
 	signal pll_reconfig_ena : std_logic;
+	signal c64_clk_rate     : integer;
 
 	signal i2c_start : std_logic;
 	signal i2c_read : std_logic;
@@ -1255,6 +1288,28 @@ begin
 		rdatasum => audio_data_r(17 downto 3),
 		aleft => AUDIO_L,
 		aright => AUDIO_R
+	);
+
+	c64_clk_rate <= 31520000 when st_ntsc = '0' else 32720000;
+	my_i2s : i2s
+	port map (
+		clk => clk_c64,
+		reset => '0',
+		clk_rate => c64_clk_rate,
+		sclk => I2S_BCK,
+		lrclk => I2S_LRCK,
+		sdata => I2S_DATA,
+		left_chan  => audio_data_l(17 downto 2),
+		right_chan => audio_data_r(17 downto 2)
+	);
+
+	my_spdif : spdif
+	port map (
+		rst_i => '0',
+		clk_i => clk_c64,
+		clk_rate_i => c64_clk_rate,
+		spdif_o => SPDIF_O,
+		sample_i => audio_data_r(17 downto 2) & audio_data_l(17 downto 2)
 	);
 
 	fpga64 : entity work.fpga64_sid_iec

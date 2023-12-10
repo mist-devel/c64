@@ -23,9 +23,6 @@ module c64_mist_top(
 	inout         HDMI_SDA,
 	inout         HDMI_SCL,
 	input         HDMI_INT,
-	output        HDMI_BCK,
-	output        HDMI_LRCK,
-	output        HDMI_SDATA,
 `endif
 
 	input         SPI_SCK,
@@ -76,6 +73,9 @@ module c64_mist_top(
 	output        I2S_BCK,
 	output        I2S_LRCK,
 	output        I2S_DATA,
+`endif
+`ifdef SPDIF_AUDIO
+	output        SPDIF,
 `endif
 `ifdef USE_AUDIO_IN
 	input         AUDIO_IN,
@@ -176,7 +176,14 @@ c64_mist (
 
 	.AUDIO_L(AUDIO_L),
 	.AUDIO_R(AUDIO_R),
-
+`ifdef I2S_AUDIO
+	.I2S_BCK(I2S_BCK),
+	.I2S_LRCK(I2S_LRCK),
+	.I2S_DATA(I2S_DATA),
+`endif
+`ifdef SPDIF_AUDIO
+	.SPDIF_O(SPDIF),
+`endif
 `ifdef USE_AUDIO_IN
 	.AUDIO_IN(AUDIO_IN),
 `endif
