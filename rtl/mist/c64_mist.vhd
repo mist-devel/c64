@@ -163,6 +163,7 @@ constant CONF_STR : string :=
 	"P2,System;"&
 	"P1O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
 	"P1O2,Video standard,PAL,NTSC;"&
+	"P1OUV,VIC-II variant,NMOS,HMOS,Old HMOS;"&
 	"P1OI,Tape sound,Off,On;"&
 	"P1OJ,Tape progress,Off,On;"&
 	"P1ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
@@ -475,6 +476,7 @@ end component progressbar;
 	signal status         : std_logic_vector(63 downto 0);
 
 	-- status(7) and status(12) are not used
+	signal st_vic_variant      : std_logic_vector(1 downto 0); -- status(31 downto 30)
 	signal st_mouse_port       : std_logic_vector(1 downto 0); -- status(29 downto 28)
 	signal st_user_port        : std_logic_vector(1 downto 0); -- status(27 downto 26)
 	signal st_midi             : std_logic_vector(2 downto 0); -- status(23 downto 25)
@@ -724,6 +726,7 @@ begin
 		mouse_strobe => mouse_strobe
 	);
 
+	st_vic_variant      <= status(31 downto 30);
 	st_mouse_port       <= status(29 downto 28);
 	st_user_port        <= status(27 downto 26);
 	st_midi             <= status(25 downto 23);
@@ -1328,6 +1331,7 @@ begin
 		romAddr => c64_rom_addr,
 		romCE => rom_ce,
 
+		vic_variant => st_vic_variant,
 		ntscInitMode => ntsc_init_mode,
 		hsync => hsync,
 		vsync => vsync,

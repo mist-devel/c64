@@ -60,6 +60,7 @@ entity fpga64_sid_iec is
 		idle        : out std_logic;
 
 		-- VGA/SCART interface
+		vic_variant : in  std_logic_vector(1 downto 0);
 		ntscInitMode: in  std_logic;
 		hsync       : out std_logic;
 		vsync       : out std_logic;
@@ -602,6 +603,8 @@ begin
 			mode6567old => '0',
 			mode6567R8 => ntscMode,
 			mode6572 => '0',
+
+			variant => vic_variant,
 
 			cs => cs_vic,
 			we => busWe,
