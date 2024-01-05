@@ -163,7 +163,7 @@ constant CONF_STR : string :=
 	"P2,System;"&
 	"P1O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
 	"P1O2,Video standard,PAL,NTSC;"&
-	"P1OUV,VIC-II variant,NMOS,HMOS,Old HMOS;"&
+	"P1OUV,VIC-II variant,656x,856x,early 856x;"&
 	"P1OI,Tape sound,Off,On;"&
 	"P1OJ,Tape progress,Off,On;"&
 	"P1ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
