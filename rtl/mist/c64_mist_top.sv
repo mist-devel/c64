@@ -74,6 +74,12 @@ module c64_mist_top(
 	output        I2S_LRCK,
 	output        I2S_DATA,
 `endif
+`ifdef I2S_AUDIO_HDMI
+	output        HDMI_MCLK,
+	output        HDMI_BCK,
+	output        HDMI_LRCK,
+	output        HDMI_SDATA,
+`endif
 `ifdef SPDIF_AUDIO
 	output        SPDIF,
 `endif
@@ -143,6 +149,14 @@ assign SDRAM2_nWE = 1;
 
 `include "build_id.v"
 
+`ifdef I2S_AUDIO
+`ifdef I2S_AUDIO_HDMI
+assign HDMI_MCLK = 0;
+assign HDMI_BCK = I2S_BCK;
+assign HDMI_LRCK = I2S_LRCK;
+assign HDMI_SDATA = I2S_DATA;
+`endif
+`endif
 
 c64_mist
 #(
