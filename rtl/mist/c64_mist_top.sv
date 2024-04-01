@@ -86,6 +86,10 @@ module c64_mist_top(
 `ifdef USE_AUDIO_IN
 	input         AUDIO_IN,
 `endif
+`ifdef USE_MIDI_PINS
+	input         MIDI_IN,
+	output        MIDI_OUT,
+`endif
 	input         UART_RX,
 	output        UART_TX
 
@@ -132,6 +136,12 @@ localparam bit USE_AUDIO_IN = 1;
 localparam bit USE_AUDIO_IN = 0;
 `endif
 
+`ifdef USE_MIDI_PINS
+localparam bit USE_MIDI_PINS = 1;
+`else
+localparam bit USE_MIDI_PINS = 0;
+`endif
+
 // remove this if the 2nd chip is actually used
 `ifdef DUAL_SDRAM
 assign SDRAM2_A = 13'hZZZZ;
@@ -163,6 +173,7 @@ c64_mist
 	.VGA_BITS(VGA_BITS),
 	.DIRECT_UPLOAD(DIRECT_UPLOAD ? "true" : "false"),
 	.USE_AUDIO_IN(USE_AUDIO_IN ? "true" : "false"),
+	.USE_MIDI_PINS(USE_MIDI_PINS ? "true" : "false"),
 	.BIG_OSD(BIG_OSD ? "true" : "false"),
 	.HDMI(HDMI ? "true" : "false"),
 	.BUILD_DATE(`BUILD_DATE)
@@ -201,7 +212,10 @@ c64_mist (
 `ifdef USE_AUDIO_IN
 	.AUDIO_IN(AUDIO_IN),
 `endif
-
+`ifdef USE_MIDI_PINS
+	.MIDI_IN(MIDI_IN),
+	.MIDI_OUT(MIDI_OUT),
+`endif
 	.SPI_SCK(SPI_SCK),
 	.SPI_DO(SPI_DO),
 	.SPI_DI(SPI_DI),

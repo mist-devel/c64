@@ -39,6 +39,7 @@ generic
    VGA_BITS   : integer := 6;
    DIRECT_UPLOAD : boolean := true;
    USE_AUDIO_IN : boolean := false;
+   USE_MIDI_PINS : boolean := false;
    BIG_OSD : boolean := false;
    HDMI : boolean := false;
    BUILD_DATE : string :=""
@@ -102,6 +103,8 @@ port
    SPI_SS4    : in    std_logic;
    CONF_DATA0 : in    std_logic;
 
+   MIDI_IN    : in    std_logic;
+   MIDI_OUT   : out   std_logic;
    UART_RX    : in    std_logic;
    UART_TX    : out   std_logic
 );
@@ -1470,13 +1473,15 @@ begin
 			flag2_n <= uart_rx_filtered;
 		when others => null;
 		end case;
-		if st_midi /= "000" then
+		if USE_MIDI_PINS then
+			MIDI_OUT <= midi_tx;
+		elsif st_midi /= "000" then
 			UART_TX <= midi_tx;
 		end if;
 	end process;
 
 	ear_input <= AUDIO_IN when USE_AUDIO_IN else uart_rxD(1) when st_user_port = "00" and st_midi = "000" else '1';
-	midi_rx <= uart_rxD(1) when st_midi /= "000" else '1';
+	midi_rx <= MIDI_IN when USE_MIDI_PINS else uart_rxD(1) when st_midi /= "000" else '1';
 
 	-- generate TOD clock from stable 32 MHz
 	process(clk32, reset_n)
