@@ -168,6 +168,12 @@ assign HDMI_SDATA = I2S_DATA;
 `endif
 `endif
 
+`ifdef DRIVE_N
+localparam integer DRIVE_N = `DRIVE_N;
+`else
+localparam integer DRIVE_N = 1;
+`endif
+
 c64_mist
 #(
 	.VGA_BITS(VGA_BITS),
@@ -176,6 +182,7 @@ c64_mist
 	.USE_MIDI_PINS(USE_MIDI_PINS ? "true" : "false"),
 	.BIG_OSD(BIG_OSD ? "true" : "false"),
 	.HDMI(HDMI ? "true" : "false"),
+	.DRIVE_N(DRIVE_N),
 	.BUILD_DATE(`BUILD_DATE)
 )
 c64_mist (

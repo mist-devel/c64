@@ -42,6 +42,7 @@ generic
    USE_MIDI_PINS : boolean := false;
    BIG_OSD : boolean := false;
    HDMI : boolean := false;
+   DRIVE_N : integer := 1;
    BUILD_DATE : string :=""
 );
 port
@@ -154,9 +155,28 @@ begin
 	return feat;
 end function;
 
+function ST1541 return string is
+variable s: string(1 to DRIVE_N*47);
+begin
+	for i in 0 to DRIVE_N-1 loop
+		--P2Oab(cd,ef,gh)...
+		s(i*47+1 to i*47+47):="P2O"&character'val(i*2+97)&character'val(i*2+98)&",Drive "&character'val(i+48)&",Enable,Enable if mounted,Disable;";
+	end loop;
+	return s;
+end function;
+
+function MT1541 return string is
+variable s: string(1 to DRIVE_N*24);
+begin
+	for i in 0 to DRIVE_N-1 loop
+		s(i*24+1 to i*24+24):="S"&character'val(i+48)&"U,D64G64,Mount Disk "&character'val(i+48)&";";
+	end loop;
+	return s;
+end function;
+
 constant CONF_STR : string := 
 	"C64;;"&
-	"S0U,D64G64,Mount Disk;"&
+	MT1541&
 	"F2,CRTPRGTAPREU,Load;"& --2
 	"F3,ROM,Load;"& --3
 	SEP&
@@ -174,6 +194,7 @@ constant CONF_STR : string :=
 	"P1ONP,Midi,Off,Sequential Inc.,Passport/Sentech,DATEL/SIEL/JMS/C-LAB,Namesoft;"&
 	"P2O3,Joysticks,Normal,Swapped;"&
 	"P2OST,Mouse,Off,Port 1,Port 2;"&
+	ST1541&
 	"P2OG,Disk Write,Enable,Disable;"&
 	"P2OQR,Userport,4-player IF,UART,UP9600;"&
 	"P2O4,CIA Model,6256,8521;"&
@@ -479,6 +500,8 @@ end component progressbar;
 	signal status         : std_logic_vector(63 downto 0);
 
 	-- status(7) and status(12) are not used
+	type st_drive_t is array(0 to 3) of std_logic_vector(1 downto 0);
+	signal st_drive            : st_drive_t;                   -- status(43/42-41/40-39/38-37/36);
 	signal st_vic_variant      : std_logic_vector(1 downto 0); -- status(31 downto 30)
 	signal st_mouse_port       : std_logic_vector(1 downto 0); -- status(29 downto 28)
 	signal st_user_port        : std_logic_vector(1 downto 0); -- status(27 downto 26)
@@ -499,18 +522,22 @@ end component progressbar;
 	signal st_normal_reset     : std_logic;                    -- status(1)
 	signal st_reset            : std_logic;                    -- status(0)
 
+	type sd_lba_t is array (0 to DRIVE_N-1) of std_logic_vector(31 downto 0);
 	signal sd_lba         : std_logic_vector(31 downto 0);
-	signal sd_rd          : std_logic_vector(1 downto 0);
-	signal sd_wr          : std_logic_vector(1 downto 0);
-	signal sd_ack         : std_logic;
+	signal sd_lbas        : sd_lba_t;
+	signal sd_rd          : std_logic_vector(DRIVE_N-1 downto 0);
+	signal sd_wr          : std_logic_vector(DRIVE_N-1 downto 0);
+	signal sd_ack_x       : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_ack_conf    : std_logic;
 	signal sd_conf        : std_logic;
 	signal sd_sdhc        : std_logic;
 	signal sd_buff_addr   : std_logic_vector(8 downto 0);
 	signal sd_buff_dout   : std_logic_vector(7 downto 0);
 	signal sd_buff_din    : std_logic_vector(7 downto 0);
+	type sd_buff_din_t is array (0 to DRIVE_N-1) of std_logic_vector(7 downto 0);
+	signal sd_buff_dins   : sd_buff_din_t;
 	signal sd_buff_wr     : std_logic;
-	signal sd_change      : std_logic_vector(1 downto 0);
+	signal sd_change      : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_mount       : std_logic;
 	signal sd_size        : std_logic_vector(63 downto 0);
 	signal disk_readonly  : std_logic;
@@ -531,15 +558,15 @@ end component progressbar;
 	signal mouse_strobe : std_logic;
 
 	signal c64_iec_atn_i  : std_logic;
+	signal c64_iec_atn_o  : std_logic;
 	signal c64_iec_clk_o  : std_logic;
 	signal c64_iec_data_o : std_logic;
-	signal c64_iec_atn_o  : std_logic;
 	signal c64_iec_data_i : std_logic;
 	signal c64_iec_clk_i  : std_logic;
 
 	signal c1541_iec_atn_i  : std_logic;
-	signal c1541_iec_clk_o  : std_logic;
-	signal c1541_iec_data_o : std_logic;
+	signal c1541_iec_clk_o  : std_logic_vector(DRIVE_N-1 downto 0);
+	signal c1541_iec_data_o : std_logic_vector(DRIVE_N-1 downto 0);
 	signal c1541_iec_atn_o  : std_logic;
 	signal c1541_iec_data_i : std_logic;
 	signal c1541_iec_clk_i  : std_logic;
@@ -607,7 +634,7 @@ end component progressbar;
 
 	signal reset_counter    : integer;
 	signal reset_n          : std_logic;
-	signal led_disk         : std_logic;
+	signal led_disk         : std_logic_vector(1 downto 0);
 	signal freeze_key  :   std_logic;
 	signal nmi         :  std_logic;
 	signal nmi_ack     :  std_logic;
@@ -649,7 +676,7 @@ end component progressbar;
 begin
 
 	-- 1541/tape activity led
-	LED <= not ioctl_download and not led_disk and cass_motor;
+	LED <= not ioctl_download and not led_disk(0) and not led_disk(1) and cass_motor;
 
 	-- use iec and the first set of idle cycles for mist access
 	mist_cycle <= '1' when ces = "1011" or idle0 = '1' else '0'; 
@@ -673,7 +700,8 @@ begin
 		--STRLEN => CONF_STR'length,
 		ROM_DIRECT_UPLOAD => DIRECT_UPLOAD,
 		PS2DIV => 1000,
-		FEATURES => USER_IO_FEAT
+		FEATURES => USER_IO_FEAT,
+		SD_IMAGES => DRIVE_N
 	)
 	port map (
 		clk_sys => clk_c64,
@@ -711,7 +739,7 @@ begin
 		sd_lba => sd_lba,
 		sd_rd => sd_rd,
 		sd_wr => sd_wr,
-		sd_ack => sd_ack,
+		sd_ack_x => sd_ack_x,
 		sd_ack_conf => sd_ack_conf,
 		sd_conf => sd_conf,
 		sd_sdhc => sd_sdhc,
@@ -729,6 +757,10 @@ begin
 		mouse_strobe => mouse_strobe
 	);
 
+	st_drive(3)         <= status(43 downto 42);
+	st_drive(2)         <= status(41 downto 40);
+	st_drive(1)         <= status(39 downto 38);
+	st_drive(0)         <= status(37 downto 36);
 	st_vic_variant      <= status(31 downto 30);
 	st_mouse_port       <= status(29 downto 28);
 	st_user_port        <= status(27 downto 26);
@@ -1504,13 +1536,6 @@ begin
 
 	disk_readonly <= st_disk_readonly;
 
-	c64_iec_data_i <= c1541_iec_data_o;
-	c64_iec_clk_i <= c1541_iec_clk_o;
-
-	c1541_iec_atn_i  <= c64_iec_atn_o;
-	c1541_iec_data_i <= c64_iec_data_o;
-	c1541_iec_clk_i  <= c64_iec_clk_o;
-
 	process(clk_c64, reset_n)
 		variable reset_cnt : integer range 0 to 32000000;
 	begin
@@ -1529,22 +1554,50 @@ begin
 		end if;
 	end process;
 
-	sd_rd(1) <= '0';
-	sd_wr(1) <= '0';
 	sd_mount <= '0' when sd_size = 0 else '1';
+
+	c1541_iec_atn_i  <= c64_iec_atn_o;
+	c1541_iec_data_i <= c64_iec_data_o;
+	c1541_iec_clk_i  <= c64_iec_clk_o;
+
+	process(c1541_iec_clk_o, c1541_iec_data_o, sd_rd, sd_wr, sd_lbas, sd_buff_dins, sd_ack_x)
+		variable iec_data_o: std_logic;
+		variable iec_clk_o: std_logic;
+	begin
+		iec_data_o := '1';
+		iec_clk_o := '1';
+		sd_buff_din <= (others => '0');
+		sd_lba <= (others => '0');
+		for i in 0 to DRIVE_N-1 loop
+			if sd_rd(i) = '1' or sd_wr(i) = '1' then
+				sd_lba <= sd_lbas(i);
+			end if;
+			if sd_ack_x(i) = '1' then
+				sd_buff_din <= sd_buff_dins(i);
+			end if;
+			iec_data_o := iec_data_o and c1541_iec_data_o(i);
+			iec_clk_o := iec_clk_o and c1541_iec_clk_o(i);
+		end loop;
+		c64_iec_data_i <= iec_data_o;
+		c64_iec_clk_i <= iec_clk_o;
+	end process;
+
+	g_c1541: for i in 0 to DRIVE_N-1 generate
 
 	c1541_sd_inst : entity work.c1541_sd
 	port map
 	(
 		clk32 => clk32,
 		reset => c1541_reset,
+		enable => st_drive(i),
+		ds => std_logic_vector(to_unsigned(i,2)),
 
 		c1541rom_clk => clk_c64,
 		c1541rom_addr => ioctl_addr(13 downto 0),
 		c1541rom_data => ioctl_data,
 		c1541rom_wr => c1541rom_wr,
 
-		disk_change => sd_change(0),
+		disk_change => sd_change(i),
 		disk_mount => sd_mount,
 		disk_num  => (others => '0'), -- always 0 on MiST, the image is selected by the OSD menu
 		disk_readonly => disk_readonly,
@@ -1555,20 +1608,21 @@ begin
 		iec_clk_i  => c1541_iec_clk_i,
 
 		--iec_atn_o  => c1541_iec_atn_o,
-		iec_data_o => c1541_iec_data_o,
-		iec_clk_o  => c1541_iec_clk_o,
+		iec_data_o => c1541_iec_data_o(i),
+		iec_clk_o  => c1541_iec_clk_o(i),
 
-		sd_lba => sd_lba,
-		sd_rd  => sd_rd(0),
-		sd_wr  => sd_wr(0),
-		sd_ack => sd_ack,
+		sd_lba => sd_lbas(i),
+		sd_rd  => sd_rd(i),
+		sd_wr  => sd_wr(i),
+		sd_ack => sd_ack_x(i),
 		sd_buff_addr => sd_buff_addr,
 		sd_buff_dout => sd_buff_dout,
-		sd_buff_din  => sd_buff_din,
+		sd_buff_din  => sd_buff_dins(i),
 		sd_buff_wr   => sd_buff_wr,
 
-		led => led_disk
+		led => led_disk(i)
 	);
+	end generate;
 
 	-- TAP playback controller	
 	process(clk_c64, reset_n)

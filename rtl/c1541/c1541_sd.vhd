@@ -30,6 +30,8 @@ port(
 	clk32 : in std_logic;
 --	clk_spi_ctrlr : in std_logic;
 	reset : in std_logic;
+	enable : in std_logic_vector(1 downto 0); -- 0 - always enabled, 1 - enabled when mounted, 2 - disabled
+	ds : in std_logic_vector(1 downto 0) := "00";
 	
 	disk_num : in std_logic_vector(9 downto 0);
 	disk_change : in std_logic;
@@ -108,6 +110,7 @@ signal max_track : std_logic_vector(6 downto 0);
 signal wps_flag : std_logic;
 signal change_timer : integer;
 signal mounted : std_logic := '0';
+signal enabled : std_logic := '0';
 
 signal dbg_sector : std_logic_vector(4 downto 0); 
 signal dbg_adr_fetch : std_logic_vector(15 downto 0); 
@@ -148,7 +151,9 @@ component mist_sd_card port
 end component mist_sd_card;
 
 begin
-	
+
+  enabled <= '0' when enable(1) = '1' or (enable(0) = '1' and mounted = '0') else '1';
+
   c1541 : entity work.c1541_logic
   generic map
   (
@@ -163,13 +168,13 @@ begin
     sb_data_oe => iec_data_o,
     sb_clk_oe  => iec_clk_o,
     sb_atn_oe  => iec_atn_o,
-		
-    sb_data_in => iec_data_i,
-    sb_clk_in  => iec_clk_i,
-    sb_atn_in  => iec_atn_i,
-    
+
+    sb_data_in => iec_data_i or not enabled,
+    sb_clk_in  => iec_clk_i  or not enabled,
+    sb_atn_in  => iec_atn_i  or not enabled,
+
     -- drive-side interface
-    ds              => "00",     -- device select
+    ds              => ds,       -- device select
     di              => c1541_logic_din,  -- data read 
     do              => c1541_logic_dout, -- data to write
     mode            => mode,     -- read/write

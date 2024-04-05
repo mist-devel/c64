@@ -260,10 +260,10 @@ assign sd_buff_din = sd_ram_addr[13] ? track_buffer_b_do_sd : track_buffer_do_sd
 
 always @(posedge clk) begin
 
-	if (sd_buff_wr & !sd_ram_addr[13]) track_buffer[sd_ram_addr[12:0]] <= sd_buff_dout;
+	if (sd_ack & sd_buff_wr & !sd_ram_addr[13]) track_buffer[sd_ram_addr[12:0]] <= sd_buff_dout;
 	track_buffer_do_sd <= track_buffer[sd_ram_addr[12:0]];
 
-	if (sd_buff_wr & sd_ram_addr[13]) track_buffer_b[sd_ram_addr[8:0]] <= sd_buff_dout;
+	if (sd_ack & sd_buff_wr & sd_ram_addr[13]) track_buffer_b[sd_ram_addr[8:0]] <= sd_buff_dout;
 	track_buffer_b_do_sd <= track_buffer_b[sd_ram_addr[8:0]];
 
 end
