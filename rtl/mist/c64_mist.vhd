@@ -522,9 +522,7 @@ end component progressbar;
 	signal st_normal_reset     : std_logic;                    -- status(1)
 	signal st_reset            : std_logic;                    -- status(0)
 
-	type sd_lba_t is array (0 to DRIVE_N-1) of std_logic_vector(31 downto 0);
 	signal sd_lba         : std_logic_vector(31 downto 0);
-	signal sd_lbas        : sd_lba_t;
 	signal sd_rd          : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_wr          : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_ack_x       : std_logic_vector(DRIVE_N-1 downto 0);
@@ -534,8 +532,6 @@ end component progressbar;
 	signal sd_buff_addr   : std_logic_vector(8 downto 0);
 	signal sd_buff_dout   : std_logic_vector(7 downto 0);
 	signal sd_buff_din    : std_logic_vector(7 downto 0);
-	type sd_buff_din_t is array (0 to DRIVE_N-1) of std_logic_vector(7 downto 0);
-	signal sd_buff_dins   : sd_buff_din_t;
 	signal sd_buff_wr     : std_logic;
 	signal sd_change      : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_mount       : std_logic;
@@ -634,7 +630,7 @@ end component progressbar;
 
 	signal reset_counter    : integer;
 	signal reset_n          : std_logic;
-	signal led_disk         : std_logic_vector(1 downto 0);
+	signal led_disks        : std_logic;
 	signal freeze_key  :   std_logic;
 	signal nmi         :  std_logic;
 	signal nmi_ack     :  std_logic;
@@ -676,7 +672,7 @@ end component progressbar;
 begin
 
 	-- 1541/tape activity led
-	LED <= not ioctl_download and not led_disk(0) and not led_disk(1) and cass_motor;
+	LED <= not ioctl_download and not led_disks and cass_motor;
 
 	-- use iec and the first set of idle cycles for mist access
 	mist_cycle <= '1' when ces = "1011" or idle0 = '1' else '0'; 
@@ -1556,16 +1552,51 @@ begin
 
 	sd_mount <= '0' when sd_size = 0 else '1';
 
-	c1541_iec_atn_i  <= c64_iec_atn_o;
-	c1541_iec_data_i <= c64_iec_data_o;
-	c1541_iec_clk_i  <= c64_iec_clk_o;
+	b_c1541: block
+		signal c1541_iec_atn_i_r  : std_logic;
+		signal c1541_iec_data_i_r : std_logic;
+		signal c1541_iec_clk_i_r  : std_logic;
+		signal c64_iec_data_i_r   : std_logic;
+		signal c64_iec_clk_i_r    : std_logic;
+		signal c64_iec_data_i_r2  : std_logic;
+		signal c64_iec_clk_i_r2   : std_logic;
+		type sd_lba_t is array (0 to DRIVE_N-1) of std_logic_vector(31 downto 0);
+		signal sd_lbas            : sd_lba_t;
+		type sd_buff_din_t is array (0 to DRIVE_N-1) of std_logic_vector(7 downto 0);
+		signal sd_buff_dins       : sd_buff_din_t;
+		signal led_disk           : std_logic_vector(DRIVE_N-1 downto 0);
+	begin
 
-	process(c1541_iec_clk_o, c1541_iec_data_o, sd_rd, sd_wr, sd_lbas, sd_buff_dins, sd_ack_x)
+	-- synchronizers
+	process(clk32) begin
+		if rising_edge(clk32) then
+			c1541_iec_atn_i_r  <= c64_iec_atn_o;
+			c1541_iec_data_i_r <= c64_iec_data_o;
+			c1541_iec_clk_i_r  <= c64_iec_clk_o;
+			c1541_iec_atn_i  <= c1541_iec_atn_i_r;
+			c1541_iec_data_i <= c1541_iec_data_i_r;
+			c1541_iec_clk_i  <= c1541_iec_clk_i_r;
+		end if;
+	end process;
+
+	process(clk_c64) begin
+		if rising_edge(clk_c64) then
+			c64_iec_data_i_r2 <= c64_iec_data_i_r;
+			c64_iec_clk_i_r2 <= c64_iec_clk_i_r;
+			c64_iec_data_i <= c64_iec_data_i_r2;
+			c64_iec_clk_i <= c64_iec_clk_i_r2;
+		end if;
+	end process;
+
+	-- muxes
+	process(c1541_iec_clk_o, c1541_iec_data_o, sd_rd, sd_wr, sd_lbas, sd_buff_dins, sd_ack_x, led_disk)
 		variable iec_data_o: std_logic;
 		variable iec_clk_o: std_logic;
+		variable leds: std_logic;
 	begin
 		iec_data_o := '1';
 		iec_clk_o := '1';
+		leds := '0';
 		sd_buff_din <= (others => '0');
 		sd_lba <= (others => '0');
 		for i in 0 to DRIVE_N-1 loop
@@ -1577,9 +1608,12 @@ begin
 			end if;
 			iec_data_o := iec_data_o and c1541_iec_data_o(i);
 			iec_clk_o := iec_clk_o and c1541_iec_clk_o(i);
+			leds := leds or led_disk(i);
 		end loop;
-		c64_iec_data_i <= iec_data_o;
-		c64_iec_clk_i <= iec_clk_o;
+		c64_iec_data_i_r <= iec_data_o;
+		c64_iec_clk_i_r <= iec_clk_o;
+
+		led_disks <= leds;
 	end process;
 
 	g_c1541: for i in 0 to DRIVE_N-1 generate
@@ -1623,6 +1657,7 @@ begin
 		led => led_disk(i)
 	);
 	end generate;
+	end block b_c1541;
 
 	-- TAP playback controller	
 	process(clk_c64, reset_n)
