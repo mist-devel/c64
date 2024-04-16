@@ -4,7 +4,7 @@
 -- MODULE: altsyncram 
 
 -- ============================================================
--- File Name: rom_reconfig_pal.vhd
+-- File Name: rom_reconfig_ntsc.vhd
 -- Megafunction Name(s):
 -- 			altsyncram
 --
@@ -39,7 +39,7 @@ USE ieee.std_logic_1164.all;
 LIBRARY altera_mf;
 USE altera_mf.altera_mf_components.all;
 
-ENTITY rom_reconfig_pal IS
+ENTITY rom_reconfig_ntsc IS
 	PORT
 	(
 		address		: IN STD_LOGIC_VECTOR (7 DOWNTO 0);
@@ -47,10 +47,10 @@ ENTITY rom_reconfig_pal IS
 		rden		: IN STD_LOGIC  := '1';
 		q		: OUT STD_LOGIC_VECTOR (0 DOWNTO 0)
 	);
-END rom_reconfig_pal;
+END rom_reconfig_ntsc;
 
 
-ARCHITECTURE SYN OF rom_reconfig_pal IS
+ARCHITECTURE SYN OF rom_reconfig_ntsc IS
 
 	SIGNAL sub_wire0	: STD_LOGIC_VECTOR (0 DOWNTO 0);
 
@@ -62,7 +62,7 @@ BEGIN
 		address_aclr_a => "NONE",
 		clock_enable_input_a => "BYPASS",
 		clock_enable_output_a => "BYPASS",
-		init_file => "pll_c64_pal.mif",
+		init_file => "./rtl/mist/cyc3/pll_c64_ntsc.mif",
 		intended_device_family => "Cyclone III",
 		lpm_hint => "ENABLE_RUNTIME_MOD=NO",
 		lpm_type => "altsyncram",
@@ -105,7 +105,7 @@ END SYN;
 -- Retrieval info: PRIVATE: JTAG_ENABLED NUMERIC "0"
 -- Retrieval info: PRIVATE: JTAG_ID STRING "NONE"
 -- Retrieval info: PRIVATE: MAXIMUM_DEPTH NUMERIC "0"
--- Retrieval info: PRIVATE: MIFfilename STRING "pll_c64_pal.mif"
+-- Retrieval info: PRIVATE: MIFfilename STRING "pll_c64_ntsc.mif"
 -- Retrieval info: PRIVATE: NUMWORDS_A NUMERIC "256"
 -- Retrieval info: PRIVATE: RAM_BLOCK_TYPE NUMERIC "0"
 -- Retrieval info: PRIVATE: RegAddr NUMERIC "1"
@@ -120,7 +120,7 @@ END SYN;
 -- Retrieval info: CONSTANT: ADDRESS_ACLR_A STRING "NONE"
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_INPUT_A STRING "BYPASS"
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_OUTPUT_A STRING "BYPASS"
--- Retrieval info: CONSTANT: INIT_FILE STRING "pll_c64_pal.mif"
+-- Retrieval info: CONSTANT: INIT_FILE STRING "pll_c64_ntsc.mif"
 -- Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone III"
 -- Retrieval info: CONSTANT: LPM_HINT STRING "ENABLE_RUNTIME_MOD=NO"
 -- Retrieval info: CONSTANT: LPM_TYPE STRING "altsyncram"
@@ -139,9 +139,9 @@ END SYN;
 -- Retrieval info: CONNECT: @clock0 0 0 0 0 clock 0 0 0 0
 -- Retrieval info: CONNECT: @rden_a 0 0 0 0 rden 0 0 0 0
 -- Retrieval info: CONNECT: q 0 0 1 0 @q_a 0 0 1 0
--- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_pal.vhd TRUE
--- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_pal.inc FALSE
--- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_pal.cmp FALSE
--- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_pal.bsf FALSE
--- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_pal_inst.vhd FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_ntsc.vhd TRUE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_ntsc.inc FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_ntsc.cmp FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_ntsc.bsf FALSE
+-- Retrieval info: GEN_FILE: TYPE_NORMAL rom_reconfig_ntsc_inst.vhd FALSE
 -- Retrieval info: LIB_FILE: altera_mf

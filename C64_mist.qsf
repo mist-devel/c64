@@ -353,6 +353,13 @@ set_global_assignment -name ALLOW_ANY_ROM_SIZE_FOR_RECOGNITION ON
 set_global_assignment -name DSP_BLOCK_BALANCING "DSP BLOCKS"
 set_global_assignment -name VERILOG_FILE build_id.v
 set_global_assignment -name QIP_FILE rtl/fpga64.qip
+set_global_assignment -name QIP_FILE "rtl/mist/mist-modules/mist.qip"
+set_global_assignment -name QIP_FILE rtl/mist/cyc3/pll.qip
+set_global_assignment -name QIP_FILE rtl/mist/cyc3/pll_c64.qip
+set_global_assignment -name QIP_FILE rtl/mist/cyc3/pll_c64_reconfig.qip
+set_global_assignment -name QIP_FILE rtl/mist/cyc3/rom_reconfig_pal.qip
+set_global_assignment -name QIP_FILE rtl/mist/cyc3/rom_reconfig_ntsc.qip
+
 set_global_assignment -name SIGNALTAP_FILE output_files/uio.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/reu.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/1541cpu.stp

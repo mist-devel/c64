@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE pinplan>
-<pinplan intended_family="Cyclone III" variation_name="pll_c64" megafunction_name="ALTPLL" specifies="all_ports">
+<pinplan intended_family="Cyclone IV GX" variation_name="pll_c64" megafunction_name="ALTPLL" specifies="all_ports">
 <global>
 <pin name="areset" direction="input" scope="external"  />
 <pin name="configupdate" direction="input" scope="external"  />
@@ -10,6 +10,7 @@
 <pin name="scandata" direction="input" scope="external"  />
 <pin name="c0" direction="output" scope="external" source="clock"  />
 <pin name="c1" direction="output" scope="external" source="clock"  />
+<pin name="c2" direction="output" scope="external" source="clock"  />
 <pin name="locked" direction="output" scope="external"  />
 <pin name="scandataout" direction="output" scope="external"  />
 <pin name="scandone" direction="output" scope="external"  />

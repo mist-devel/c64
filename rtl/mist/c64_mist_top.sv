@@ -186,8 +186,11 @@ c64_mist
 	.BUILD_DATE(`BUILD_DATE)
 )
 c64_mist (
-	.CLOCK_27(CLOCK_27),
-
+`ifdef CLOCK_IN_50
+	.CLOCK_IN(CLOCK_50),
+`else
+	.CLOCK_IN(CLOCK_27),
+`endif
 	.LED(LED),
 	.VGA_R(VGA_R),
 	.VGA_G(VGA_G),

@@ -48,7 +48,7 @@ generic
 port
 (
 	-- Clocks
-   CLOCK_27   : in    std_logic;
+   CLOCK_IN   : in    std_logic;
 
    -- LED
    LED        : out   std_logic;
@@ -1169,9 +1169,10 @@ begin
 	-- clock for C64 and SDRAM
 	pll : entity work.pll_c64
 	port map(
-		inclk0 => CLOCK_27,
-		c0 => clk_ram,
+		inclk0 => CLOCK_IN,
+		c0 => SDRAM_CLK,
 		c1 => clk_c64,
+		c2 => clk_ram,
 		areset => pll_areset,
 		scanclk => pll_scanclk,
 		scandata => pll_scandata,
@@ -1180,12 +1181,11 @@ begin
 		scandataout => pll_scandataout,
 		scandone => pll_scandone
 	);
-	SDRAM_CLK <= clk_ram;
 
 	-- clock for 1541
 	pll_2 : entity work.pll
 	port map(
-		inclk0 => CLOCK_27,
+		inclk0 => CLOCK_IN,
 		c0 => clk32,
 		locked => pll_locked
 	);

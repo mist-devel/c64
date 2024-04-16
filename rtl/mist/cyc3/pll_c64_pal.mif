@@ -17,8 +17,8 @@
 --    Device Part: -
 --    Device Speed Grade: 8
 --    PLL Scan Chain: Fast PLL (144 bits)
---    File Name: /home/gyurco/git/mist-board/cores/c64/rtl/mist/pll_c64_pal.mif
---    Generated: Mon Mar 18 13:55:59 2019
+--    File Name: /home/gyuri/git/c64/rtl/mist/cyc3/pll_c64_pal.mif
+--    Generated: Mon Apr 15 23:37:38 2024
 
 WIDTH=1;
 DEPTH=144;
@@ -117,22 +117,22 @@ CONTENT BEGIN
 	87   :   0;
 	88   :   0;
 	89   :   1;
-	90   :   1; -- clk2 counter: Bypass = 1 (1 bit(s))
-	91   :   0; -- clk2 counter: High Count = 0 (8 bit(s))
+	90   :   0; -- clk2 counter: Bypass = 0 (1 bit(s))
+	91   :   0; -- clk2 counter: High Count = 5 (8 bit(s))
 	92   :   0;
 	93   :   0;
 	94   :   0;
 	95   :   0;
-	96   :   0;
+	96   :   1;
 	97   :   0;
-	98   :   0;
-	99   :   0; -- clk2 counter: Odd Division = 0 (1 bit(s))
-	100  :   0; -- clk2 counter: Low Count = 0 (8 bit(s))
+	98   :   1;
+	99   :   1; -- clk2 counter: Odd Division = 1 (1 bit(s))
+	100  :   0; -- clk2 counter: Low Count = 4 (8 bit(s))
 	101  :   0;
 	102  :   0;
 	103  :   0;
 	104  :   0;
-	105  :   0;
+	105  :   1;
 	106  :   0;
 	107  :   0;
 	108  :   1; -- clk3 counter: Bypass = 1 (1 bit(s))
