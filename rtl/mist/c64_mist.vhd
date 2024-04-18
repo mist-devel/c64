@@ -1333,7 +1333,7 @@ begin
 		sclk => I2S_BCK,
 		lrclk => I2S_LRCK,
 		sdata => I2S_DATA,
-		left_chan  => audio_data_l(17 downto 2),
+		left_chan  => audio_data_l_mix(17 downto 2),
 		right_chan => audio_data_r(17 downto 2)
 	);
 
@@ -1343,7 +1343,7 @@ begin
 		clk_i => clk_c64,
 		clk_rate_i => c64_clk_rate,
 		spdif_o => SPDIF_O,
-		sample_i => audio_data_r(17 downto 2) & audio_data_l(17 downto 2)
+		sample_i => audio_data_r(17 downto 2) & audio_data_l_mix(17 downto 2)
 	);
 
 	fpga64 : entity work.fpga64_sid_iec
