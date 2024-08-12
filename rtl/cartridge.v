@@ -49,12 +49,12 @@ module cartridge
 reg [23:0] addr_out;
 assign     sdram_address_out = addr_out;
 
-reg  [6:0] bank_lo;
-reg  [6:0] bank_hi;
+reg  [7:0] bank_lo;
+reg  [7:0] bank_hi;
 reg [12:0] mask_lo;
 
-reg  [6:0] IOE_bank;
-reg  [6:0] IOF_bank;
+reg  [7:0] IOE_bank;
+reg  [7:0] IOF_bank;
 reg        IOE_wr_ena;
 reg        IOF_wr_ena;
 
@@ -66,8 +66,8 @@ assign game  = ~cart_attached | game_overide;
 reg allow_bank;
 reg reu_map;
 reg clock_port;
-(* ramstyle = "logic" *) reg [6:0] lobanks[0:63];
-(* ramstyle = "logic" *) reg [6:0] hibanks[0:63];
+(* ramstyle = "logic" *) reg [7:0] lobanks[0:63];
+(* ramstyle = "logic" *) reg [7:0] hibanks[0:63];
 
 reg  [7:0] bank_cnt;
 always @(posedge clk32) begin
@@ -79,10 +79,10 @@ always @(posedge clk32) begin
 		bank_cnt <= bank_cnt + 1'd1;
 		if(cart_bank_num<64) begin
 			if(cart_bank_laddr <= 'h8000) begin
-				lobanks[cart_bank_num[5:0]] <= cart_bank_raddr[19:13];
-				if(cart_bank_size > 'h2000) hibanks[cart_bank_num[5:0]] <= cart_bank_raddr[19:13]+1'd1;
+				lobanks[cart_bank_num[5:0]] <= cart_bank_raddr[20:13];
+				if(cart_bank_size > 'h2000) hibanks[cart_bank_num[5:0]] <= cart_bank_raddr[20:13]+1'd1;
 			end
-			else hibanks[cart_bank_num[5:0]] <= cart_bank_raddr[19:13];
+			else hibanks[cart_bank_num[5:0]] <= cart_bank_raddr[20:13];
 		end
 	end
 end
@@ -385,20 +385,50 @@ always @(posedge clk32) begin
 
 		// Magic Desk - (game=1, exrom=0 = 4/8/16 - up to 128 for extended format - 8k banks)
 		19: begin
-				if(!init_n) begin
-					game_overide  <= 1;
-					exrom_overide <= 0;
-					bank_lo <= 0;
+			if(!init_n) begin
+				game_overide  <= 1;
+				exrom_overide <= 0;
+				bank_lo <= 0;
+			end
+
+			if(ioe_wr) begin
+				if(bank_cnt <= 16) bank_lo <= c64_data_out[3:0];
+				else if(bank_cnt <= 32) bank_lo <= c64_data_out[4:0];
+				else if(bank_cnt <= 64) bank_lo <= c64_data_out[5:0];
+				else bank_lo <= c64_data_out[6:0];
+
+				exrom_overide <= c64_data_out[7];
+			end
+		end
+
+		// Magic Desk2 - (game=0, exrom=0 = 4/8/16 - up to 128 for extended format - 16k banks)
+		79: begin
+			if(!init_n) begin
+				game_overide  <= 0;
+				exrom_overide <= 0;
+				bank_lo <= 0;
+				bank_hi <= 1;
+			end
+
+			if(ioe_wr) begin
+				if(bank_cnt <= 16) begin
+					bank_lo <= {c64_data_out[3:0], 1'b0};
+					bank_hi <= {c64_data_out[3:0], 1'b1};
+				end else if(bank_cnt <= 32) begin
+					bank_lo <= {c64_data_out[4:0], 1'b0};
+					bank_hi <= {c64_data_out[4:0], 1'b1};
+				end else if(bank_cnt <= 64) begin
+					bank_lo <= {c64_data_out[5:0], 1'b0};
+					bank_hi <= {c64_data_out[5:0], 1'b1};
+				end else begin
+					bank_lo <= {c64_data_out[6:0], 1'b0};
+					bank_hi <= {c64_data_out[6:0], 1'b1};
 				end
 
-				if(ioe_wr) begin
-					if(bank_cnt <= 16) bank_lo <= c64_data_out[3:0];
-					else if(bank_cnt <= 32) bank_lo <= c64_data_out[4:0];
-					else if(bank_cnt <= 64) bank_lo <= c64_data_out[5:0];
-					else bank_lo <= c64_data_out[6:0];
-					exrom_overide <= c64_data_out[7];
-				end
+				exrom_overide <= c64_data_out[7];
+				game_overide <= c64_data_out[7];
 			end
+		end
 
 		// Super Snapshot v5 -(64k rom 8*8k banks/4*16k banks, 32k ram 4*8k banks)
 		20: begin
