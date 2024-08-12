@@ -666,8 +666,8 @@ end component progressbar;
 	-- sdram layout 
 	constant C64_MEM_START : std_logic_vector(23 downto 0) := X"000000"; -- normal C64 RAM
 	constant C64_ROM_START : std_logic_vector(23 downto 0) := X"0F0000"; -- kernal/basic ROM
-	constant CRT_MEM_START : std_logic_vector(23 downto 0) := X"100000"; -- cartridges
-	constant TAP_MEM_START : std_logic_vector(23 downto 0) := X"200000"; -- .tap files 
+	constant CRT_MEM_START : std_logic_vector(23 downto 0) := X"200000"; -- cartridges
+	constant TAP_MEM_START : std_logic_vector(23 downto 0) := X"400000"; -- .tap files 
 	
 begin
 
