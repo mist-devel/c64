@@ -461,10 +461,10 @@ end component progressbar;
 	signal IOF					: std_logic;												-- IOF signal
 	signal cartridge_reset	: std_logic;												-- FLAG to reset once cart loaded
 	signal reset_crt        : std_logic;	
-	signal romL				: std_logic;													-- cart romL from buslogic LCA
-	signal romH				: std_logic;													-- cart romH from buslogic LCA
-	signal UMAXromH		: std_logic;													-- VIC II Ultimax access - LCA
-	signal ext_sid_cs   : std_logic;
+	signal romL             : std_logic;												-- cart romL from buslogic LCA
+	signal romH             : std_logic;												-- cart romH from buslogic LCA
+	signal UMAXromH         : std_logic;												-- VIC II Ultimax access - LCA
+	signal ext_sid_cs       : std_logic;
 
 	signal CPU_hasbus		: std_logic;
 	signal c64_ba        : std_logic;
@@ -1226,7 +1226,7 @@ begin
 
 	-- reu
 	reu_din <= c64_data_out;
-	reu_enable <= '0' when st_reu = "000" or cart_attached = '1' else '1';
+	reu_enable <= '0' when st_reu = "000" or (cart_attached = '1' and ioF_rom = '1') else '1';
 
 	with st_reu select reu_rommask <=
 		"00000" when "001",
