@@ -972,8 +972,9 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 		end if;
 	end process;
 
-	cia2_pai(5 downto 0) <= cia2_pao(5 downto 0);
+	cia2_pai(5 downto 3) <= cia2_pao(5 downto 3);
 	cia2_pai(2) <= pa2_in;
+	cia2_pai(1 downto 0) <= cia2_pao(1 downto 0);
 	pa2_out <= cia2_pao(2);
 	cia2_pbi <= pb_in;
 	pb_out <= cia2_pbo;
