@@ -86,6 +86,12 @@ module c64_mist_top(
 `ifdef USE_AUDIO_IN
 	input         AUDIO_IN,
 `endif
+`ifdef USE_EXPANSION
+	input         UART_CTS,
+	output        UART_RTS,
+	inout         EXP7,
+	inout         MOTOR_CTRL,
+`endif
 `ifdef USE_MIDI_PINS
 	input         MIDI_IN,
 	output        MIDI_OUT,
@@ -174,6 +180,10 @@ localparam integer DRIVE_N = `DRIVE_N;
 localparam integer DRIVE_N = 1;
 `endif
 
+`ifdef USE_EXPANSION
+assign EXP7 = 1'bZ;
+`endif
+
 c64_mist
 #(
 	.VGA_BITS(VGA_BITS),
@@ -246,7 +256,12 @@ c64_mist (
 	.SDRAM_CLK(SDRAM_CLK),
 	.SDRAM_CKE(SDRAM_CKE),
 
+`ifdef USE_EXPANSION
+	.UART_CTS(UART_CTS),
+	.UART_RTS(UART_RTS),
+	.MOTOR_CTRL(MOTOR_CTRL),
+`endif
 	.UART_RX(UART_RX),
 	.UART_TX(UART_TX)
 );
-endmodule 
+endmodule

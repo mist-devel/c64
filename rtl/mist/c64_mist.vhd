@@ -107,7 +107,10 @@ port
    MIDI_IN    : in    std_logic;
    MIDI_OUT   : out   std_logic;
    UART_RX    : in    std_logic;
-   UART_TX    : out   std_logic
+   UART_TX    : out   std_logic;
+   UART_CTS   : in    std_logic;
+   UART_RTS   : out   std_logic;
+   MOTOR_CTRL : inout std_logic
 );
 end c64_mist;
 
@@ -1468,7 +1471,7 @@ begin
 	end process;
 
 	-- connect user port
-	process (pa2_out, pb_out, sp1_out, joyC_c64, joyD_c64, uart_rx_filtered, st_user_port, cass_motor, st_midi, midi_tx)
+	process (pa2_out, pb_out, sp1_out, joyC_c64, joyD_c64, uart_rx_filtered, st_user_port, cass_motor, st_midi, midi_tx, UART_CTS)
 	begin
 		pa2_in <= pa2_out;
 		sp2_in <= '1';
@@ -1476,6 +1479,12 @@ begin
 		pb_in <= pb_out;
 		flag2_n <= '1';
 		UART_TX <= '1';
+		UART_RTS <= '1';
+		if cass_motor = '1' then
+			MOTOR_CTRL <= '0';
+		else
+			MOTOR_CTRL <= 'Z';
+		end if;
 
 		case st_user_port is
 		when "00" =>
@@ -1493,12 +1502,18 @@ begin
 			flag2_n <= uart_rx_filtered;
 			pb_in(0) <= uart_rx_filtered;
 			UART_TX <= pa2_out;
+			UART_RTS <= pb_out(1);
+			pb_in(6) <= UART_CTS;
 		when "10" =>
 			-- UP9600
 			cnt2_in <= pb_out(7);
 			UART_TX <= sp1_out;
+			pa2_in <= sp1_out;
 			sp2_in <= uart_rx_filtered;
 			flag2_n <= uart_rx_filtered;
+			pb_in(0) <= uart_rx_filtered;
+			UART_RTS <= pb_out(1);
+			pb_in(6) <= UART_CTS;
 		when others => null;
 		end case;
 		if USE_MIDI_PINS then

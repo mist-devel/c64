@@ -229,10 +229,10 @@ set_location_assignment PIN_AB16 -to UART_RX
 set_location_assignment PIN_AB18 -to UART_TX
 set_location_assignment PIN_AA3 -to MIDI_IN
 set_location_assignment PIN_AA5 -to MIDI_OUT
-set_location_assignment PIN_Y7 -to EXP5
-set_location_assignment PIN_Y8 -to EXP6
+set_location_assignment PIN_Y7 -to UART_CTS
+set_location_assignment PIN_Y8 -to UART_RTS
 set_location_assignment PIN_Y10 -to EXP7
-set_location_assignment PIN_W6 -to EXP8
+set_location_assignment PIN_W6 -to MOTOR_CTRL
 
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[*]
 set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[*]
@@ -330,6 +330,9 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to HDMI_LRCK
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to HDMI_SDATA
 set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to HDMI_MCLK
 
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to EXP7
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to MOTOR_CTRL
+
 # Classic Timing Assignments
 # ==========================
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
@@ -413,6 +416,7 @@ set_global_assignment -name VERILOG_MACRO "USE_CLOCK_50=1"
 set_global_assignment -name VERILOG_MACRO "BIG_OSD=1"
 set_global_assignment -name VERILOG_MACRO "USE_HDMI=1"
 set_global_assignment -name VERILOG_MACRO "USE_MIDI_PINS=1"
+set_global_assignment -name VERILOG_MACRO "USE_EXPANSION=1"
 set_global_assignment -name VERILOG_MACRO "DRIVE_N=2"
 
 set_global_assignment -name DSP_BLOCK_BALANCING "DSP BLOCKS"
@@ -428,7 +432,7 @@ set_global_assignment -name QIP_FILE rtl/mist/cyc3/pll_c64_reconfig.qip
 set_global_assignment -name QIP_FILE rtl/mist/cyc3/rom_reconfig_pal.qip
 set_global_assignment -name QIP_FILE rtl/mist/cyc3/rom_reconfig_ntsc.qip
 
-set_global_assignment -name USE_SIGNALTAP_FILE output_files/uio.stp
+set_global_assignment -name USE_SIGNALTAP_FILE output_files/cart.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/cart.stp
 
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
