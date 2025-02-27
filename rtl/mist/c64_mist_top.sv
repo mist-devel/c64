@@ -86,7 +86,7 @@ module c64_mist_top(
 `ifdef USE_AUDIO_IN
 	input         AUDIO_IN,
 `endif
-`ifdef USE_EXPANSION
+`ifdef SIDI128_EXPANSION
 	input         UART_CTS,
 	output        UART_RTS,
 	inout         EXP7,
@@ -180,7 +180,7 @@ localparam integer DRIVE_N = `DRIVE_N;
 localparam integer DRIVE_N = 1;
 `endif
 
-`ifdef USE_EXPANSION
+`ifdef SIDI128_EXPANSION
 assign EXP7 = 1'bZ;
 `endif
 
@@ -256,7 +256,7 @@ c64_mist (
 	.SDRAM_CLK(SDRAM_CLK),
 	.SDRAM_CKE(SDRAM_CKE),
 
-`ifdef USE_EXPANSION
+`ifdef SIDI128_EXPANSION
 	.UART_CTS(UART_CTS),
 	.UART_RTS(UART_RTS),
 	.MOTOR_CTRL(MOTOR_CTRL),

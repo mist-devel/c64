@@ -416,7 +416,7 @@ set_global_assignment -name VERILOG_MACRO "USE_CLOCK_50=1"
 set_global_assignment -name VERILOG_MACRO "BIG_OSD=1"
 set_global_assignment -name VERILOG_MACRO "USE_HDMI=1"
 set_global_assignment -name VERILOG_MACRO "USE_MIDI_PINS=1"
-set_global_assignment -name VERILOG_MACRO "USE_EXPANSION=1"
+set_global_assignment -name VERILOG_MACRO "SIDI128_EXPANSION=1"
 set_global_assignment -name VERILOG_MACRO "DRIVE_N=2"
 
 set_global_assignment -name DSP_BLOCK_BALANCING "DSP BLOCKS"
