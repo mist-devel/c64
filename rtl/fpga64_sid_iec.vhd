@@ -99,6 +99,8 @@ entity fpga64_sid_iec is
 		-- joystick interface
 		joyA        : in  unsigned(6 downto 0);
 		joyB        : in  unsigned(6 downto 0);
+		joyA_fire_o : out std_logic;
+		joyB_fire_o : out std_logic;
 		potA_x      : in  std_logic_vector(7 downto 0);
 		potA_y      : in  std_logic_vector(7 downto 0);
 		potB_x      : in  std_logic_vector(7 downto 0);
@@ -871,6 +873,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 			backwardsReadingEnabled => '1'
 		);
 
+	joyA_fire_o <= cia1_pao(4);
+	joyB_fire_o <= cia1_pbo(4);
 -- -----------------------------------------------------------------------
 -- Reset button
 -- -----------------------------------------------------------------------
