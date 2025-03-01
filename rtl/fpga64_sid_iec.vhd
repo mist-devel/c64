@@ -97,10 +97,10 @@ entity fpga64_sid_iec is
 		freeze_key  : out std_logic;
 
 		-- joystick interface
-		joyA        : in  unsigned(6 downto 0);
-		joyB        : in  unsigned(6 downto 0);
-		joyA_fire_o : out std_logic;
-		joyB_fire_o : out std_logic;
+		ctrl1       : in  unsigned(6 downto 0);
+		ctrl2       : in  unsigned(6 downto 0);
+		ctrl1_fire_o: out std_logic;
+		ctrl2_fire_o: out std_logic;
 		potA_x      : in  std_logic_vector(7 downto 0);
 		potA_y      : in  std_logic_vector(7 downto 0);
 		potB_x      : in  std_logic_vector(7 downto 0);
@@ -675,10 +675,10 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	          sid_do8580_r;
 
 	-- CD4066 analogue switch
-	cd4066_sigA <= x"FF" when cia1_pao(7) = '0' else potA_x;
-	cd4066_sigB <= x"FF" when cia1_pao(7) = '0' else potA_y;
-	cd4066_sigC <= x"FF" when cia1_pao(6) = '0' else potB_x;
-	cd4066_sigD <= x"FF" when cia1_pao(6) = '0' else potB_y;
+	cd4066_sigA <= x"FF" when cia1_pao(7) = '0' else potB_x;
+	cd4066_sigB <= x"FF" when cia1_pao(7) = '0' else potB_y;
+	cd4066_sigC <= x"FF" when cia1_pao(6) = '0' else potA_x;
+	cd4066_sigD <= x"FF" when cia1_pao(6) = '0' else potA_y;
 
 	pot_x <= cd4066_sigA and cd4066_sigC;
 	pot_y <= cd4066_sigB and cd4066_sigD;
@@ -855,8 +855,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 			theScanCode => theScanCode,
 			newScanCode => newScanCode,
 
-			joyA => (not joyA(4 downto 0)),
-			joyB => (not joyB(4 downto 0)),
+			ctrl1 => (not ctrl1(4 downto 0)),
+			ctrl2 => (not ctrl2(4 downto 0)),
 			pai => unsigned(cia1_pao),
 			pbi => unsigned(cia1_pbo),
 			std_logic_vector(pao) => cia1_pai,
@@ -873,8 +873,8 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 			backwardsReadingEnabled => '1'
 		);
 
-	joyA_fire_o <= cia1_pao(4);
-	joyB_fire_o <= cia1_pbo(4);
+	ctrl1_fire_o <= cia1_pbo(4);
+	ctrl2_fire_o <= cia1_pao(4);
 -- -----------------------------------------------------------------------
 -- Reset button
 -- -----------------------------------------------------------------------
