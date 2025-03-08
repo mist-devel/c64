@@ -1448,15 +1448,15 @@ begin
 	mouse2_en <= '1' when st_mouse_port = "10" else '0';
 
 	-- paddle pins - mouse or GS controller
-	potA_x <= '0' & std_logic_vector(mouse_x_pos)(6 downto 1) & '0' when mouse1_en = '1' and st_mouse_neos = '0'
+	potA_x <= '1' & std_logic_vector(mouse_x_pos)(6 downto 1) & '0' when mouse1_en = '1' and st_mouse_neos = '0'
 	          else (others => mouse_btns(1)) when mouse1_en = '1' and st_mouse_neos = '1'
 	          else x"00" when joyA_c64(5) = '1' else x"FF";
-	potA_y <= '0' & std_logic_vector(mouse_y_pos)(6 downto 1) & '0' when mouse1_en = '1' and st_mouse_neos = '0'
+	potA_y <= '1' & std_logic_vector(mouse_y_pos)(6 downto 1) & '0' when mouse1_en = '1' and st_mouse_neos = '0'
 	          else x"00" when joyA_c64(6) = '1' else x"FF";
-	potB_x <= '0' & std_logic_vector(mouse_x_pos)(6 downto 1) & '0' when mouse2_en = '1' and st_mouse_neos = '0'
+	potB_x <= '1' & std_logic_vector(mouse_x_pos)(6 downto 1) & '0' when mouse2_en = '1' and st_mouse_neos = '0'
 	          else (others => mouse_btns(1)) when mouse2_en = '1' and st_mouse_neos = '1'
 	          else x"00" when joyB_c64(5) = '1' else x"FF";
-	potB_y <= '0' & std_logic_vector(mouse_y_pos)(6 downto 1) & '0' when mouse2_en = '1'
+	potB_y <= '1' & std_logic_vector(mouse_y_pos)(6 downto 1) & '0' when mouse2_en = '1'
 	          else x"00" when joyB_c64(6) = '1' else x"FF";
 
 	-- swap joysticks if requested
@@ -1465,11 +1465,13 @@ begin
 
 	-- rearrange joystick contacts for c64
 	joyA_c64(6 downto 5) <= joyA_int(6 downto 5);
-	joyA_c64(4 downto 0) <= mouse_btns(0) & neos_data when mouse1_en = '1' and st_mouse_neos = '1'
-                           else (joyA_int(4) or (mouse1_en and mouse_btns(0))) & joyA_int(0) & joyA_int(1) & joyA_int(2) & (joyA_int(3) or (mouse1_en and mouse_btns(1)));
+	joyA_c64(4 downto 0) <= mouse_btns(0) & "000" & mouse_btns(1) when mouse1_en = '1' and st_mouse_neos = '0' else -- 1351
+	                        mouse_btns(0) & neos_data when mouse1_en = '1' else -- neos
+	                        joyA_int(4) & joyA_int(0) & joyA_int(1) & joyA_int(2) & joyA_int(3);
 	joyB_c64(6 downto 5) <= joyB_int(6 downto 5);
-	joyB_c64(4 downto 0) <= mouse_btns(0) & neos_data when mouse2_en = '1' and st_mouse_neos = '1'
-	                        else (joyB_int(4) or (mouse2_en and mouse_btns(0))) & joyB_int(0) & joyB_int(1) & joyB_int(2) & (joyB_int(3) or (mouse2_en and mouse_btns(1)));
+	joyB_c64(4 downto 0) <= mouse_btns(0) & "000" & mouse_btns(1) when mouse2_en = '1' and st_mouse_neos = '0' else -- 1351
+	                        mouse_btns(0) & neos_data when mouse2_en = '1' else -- neos
+	                        joyB_int(4) & joyB_int(0) & joyB_int(1) & joyB_int(2) & joyB_int(3);
 
 	joyC_c64 <= joyC(6 downto 4) & joyC(0) & joyC(1) & joyC(2) & joyC(3);
 	joyD_c64 <= joyD(6 downto 4) & joyD(0) & joyD(1) & joyD(2) & joyD(3);
