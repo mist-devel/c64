@@ -1566,8 +1566,8 @@ begin
 			flag2_n <= uart_rx_filtered;
 			pb_in(0) <= uart_rx_filtered;
 			UART_TX <= pa2_out;
-			UART_RTS <= pb_out(1);
-			pb_in(6) <= UART_CTS;
+			UART_RTS <= not pb_out(1);
+			pb_in(6) <= not UART_CTS;
 		when "10" =>
 			-- UP9600
 			cnt2_in <= pb_out(7);
@@ -1576,8 +1576,8 @@ begin
 			sp2_in <= uart_rx_filtered;
 			flag2_n <= uart_rx_filtered;
 			pb_in(0) <= uart_rx_filtered;
-			UART_RTS <= pb_out(1);
-			pb_in(6) <= UART_CTS;
+			UART_RTS <= not pb_out(1);
+			pb_in(6) <= not UART_CTS;
 		when others => null;
 		end case;
 		if USE_MIDI_PINS then

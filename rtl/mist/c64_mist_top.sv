@@ -260,6 +260,8 @@ c64_mist (
 	.UART_CTS(UART_CTS),
 	.UART_RTS(UART_RTS),
 	.MOTOR_CTRL(MOTOR_CTRL),
+`else
+	.UART_CTS(1'b0),
 `endif
 	.UART_RX(UART_RX),
 	.UART_TX(UART_TX)
