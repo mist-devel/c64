@@ -224,7 +224,7 @@ begin
 				(pbi(4) or not key_Z) and
 				(pbi(5) or not key_S) and
 				(pbi(6) or not key_E) and
-				(pbi(7) or not (key_left or key_up or key_shiftL or key_f2 or key_f4 or key_f6 or key_f8))));
+				(pbi(7) or not (key_shiftl or key_left or key_up or key_f2 or key_f4 or key_f6 or key_f8))));
 			pao(2) <= pai(2) and ctrl2_s(2) and
 				((not backwardsReadingEnabled) or
 				((pbi(0) or not key_5) and
@@ -271,7 +271,7 @@ begin
 				(pbi(1) or not key_star) and
 				(pbi(2) or not key_semicolon) and
 				(pbi(3) or not key_home) and
-				(pbi(4) or not key_shiftr) and
+				(pbi(4) or not (key_shiftr or key_left or key_up or key_f2 or key_f4 or key_f6 or key_f8)) and
 				(pbi(5) or not key_equal) and
 				(pbi(6) or not key_arrowup) and
 				(pbi(7) or not key_slash)));
@@ -330,7 +330,7 @@ begin
 				(pai(3) or not key_B) and
 				(pai(4) or not key_M) and
 				(pai(5) or not key_dot) and
-				(pai(6) or not key_shiftr) and
+				(pai(6) or not (key_shiftr or key_left or key_up or key_f2 or key_f4 or key_f6 or key_f8)) and
 				(pai(7) or not key_space);
 			pbo(5) <= pbi(5) and
 				(pai(0) or not key_F3) and
@@ -352,7 +352,7 @@ begin
 				(pai(7) or not key_Q);
 			pbo(7) <= pbi(7) and
 				(pai(0) or not (key_up or key_down)) and
-				(pai(1) or not (key_left or key_up or key_shiftL or key_f2 or key_f4 or key_f6 or key_f8)) and
+				(pai(1) or not (key_shiftl or key_left or key_up or key_f2 or key_f4 or key_f6 or key_f8)) and
 				(pai(2) or not key_X) and
 				(pai(3) or not key_V) and
 				(pai(4) or not key_N) and
