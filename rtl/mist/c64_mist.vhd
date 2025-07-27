@@ -182,6 +182,7 @@ constant CONF_STR : string :=
 	MT1541&
 	"F2,CRTPRGTAPREU,Load;"& --2
 	"F3,ROM,Load;"& --3
+	"F4pIDX,IDX,Open;"& --2
 	SEP&
 	"TH,Play/Stop TAP;"&
 	SEP&
@@ -231,6 +232,7 @@ constant FILE_BOOT : std_logic_vector(7 downto 0) := x"00";      -- ROM files se
 constant FILE_CRT  : std_logic_vector(7 downto 0) := x"02";
 constant FILE_PRG  : std_logic_vector(7 downto 0) := x"42";
 constant FILE_TAP  : std_logic_vector(7 downto 0) := x"82";
+constant FILE_IDX  : std_logic_vector(7 downto 0) := x"04";
 constant FILE_REU  : std_logic_vector(7 downto 0) := x"C2";
 constant FILE_ROM  : std_logic_vector(7 downto 0) := x"03";
 
@@ -365,6 +367,12 @@ port
 	pix      : out std_logic
 );
 end component progressbar;
+
+	-- sdram layout 
+	constant C64_MEM_START : std_logic_vector(23 downto 0) := X"000000"; -- normal C64 RAM
+	constant C64_ROM_START : std_logic_vector(23 downto 0) := X"0F0000"; -- kernal/basic ROM
+	constant CRT_MEM_START : std_logic_vector(23 downto 0) := X"200000"; -- cartridges
+	constant TAP_MEM_START : std_logic_vector(23 downto 0) := X"400000"; -- .tap files
 
 	signal pll_locked_in : std_logic_vector(1 downto 0);
 	signal pll_locked : std_logic;
@@ -633,8 +641,8 @@ end component progressbar;
 	
 	signal tap_mem_ce     : std_logic;
 	signal tap_mem_ce_res : std_logic;
-	signal tap_play_addr  : std_logic_vector(23 downto 0);
-	signal tap_last_addr  : std_logic_vector(23 downto 0);
+	signal tap_play_addr  : std_logic_vector(23 downto 0) := TAP_MEM_START;
+	signal tap_last_addr  : std_logic_vector(23 downto 0) := TAP_MEM_START;
 	signal tap_reset      : std_logic;
 	signal tap_wrreq      : std_logic;
 	signal tap_wrfull     : std_logic;
@@ -678,12 +686,6 @@ end component progressbar;
 	signal reu_ram_we       : std_logic;
 	signal reu_ram_di       : std_logic_vector( 7 downto 0);
 	signal reu_ram_do       : std_logic_vector( 7 downto 0);
-
-	-- sdram layout 
-	constant C64_MEM_START : std_logic_vector(23 downto 0) := X"000000"; -- normal C64 RAM
-	constant C64_ROM_START : std_logic_vector(23 downto 0) := X"0F0000"; -- kernal/basic ROM
-	constant CRT_MEM_START : std_logic_vector(23 downto 0) := X"200000"; -- cartridges
-	constant TAP_MEM_START : std_logic_vector(23 downto 0) := X"400000"; -- .tap files 
 	
 begin
 
@@ -978,7 +980,7 @@ begin
 					end if;
 				end if;
 
-				if ioctl_index = FILE_TAP then
+				if ioctl_index = FILE_TAP or ioctl_index = FILE_IDX then
 					if ioctl_addr = 0 then
 						ioctl_load_addr <= TAP_MEM_START;
 						ioctl_ram_data <= ioctl_data;
@@ -1742,14 +1744,12 @@ begin
 	process(clk_c64, reset_n)
 	begin
 		if reset_n = '0' then
-			tap_play_addr <= TAP_MEM_START;
-			tap_last_addr <= TAP_MEM_START;			
-			tap_reset <= '1';
+			tap_reset <= '0';
 			tap_mem_ce <= '0';
 			tap_mem_ce_res <= '0';
 		elsif rising_edge(clk_c64) then
 			tap_reset <= '0';
-			if ioctl_download = '1' and ioctl_index = FILE_TAP then				
+			if ioctl_download = '1' and (ioctl_index = FILE_TAP or ioctl_index = FILE_IDX) then
 				tap_play_addr <= TAP_MEM_START;
 				tap_last_addr <= ioctl_load_addr;
 				tap_reset <= '1';
@@ -1795,6 +1795,7 @@ begin
 		cass_sense => cass_sense,
 		cass_run => cass_run,
 		osd_play_stop_toggle => st_tap_play_btn or tap_playstop_key,
+		osd_play_stop_reset => not reset_n,
 		ear_input => ear_input
 	);
 

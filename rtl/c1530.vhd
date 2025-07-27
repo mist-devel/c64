@@ -27,6 +27,7 @@ port(
 	tap_fifo_error  : out std_logic;                    -- fifo fall empty (unrecoverable error)
 
 	osd_play_stop_toggle : in  std_logic;  -- PLAY/STOP toggle button from OSD
+	osd_play_stop_reset : in  std_logic;  -- PLAY/STOP reset
 
 	cass_sense : out std_logic;   -- 0 = PLAY/REW/FF/REC button is pressed
 	cass_read  : buffer std_logic;   -- tape read signal
@@ -108,6 +109,9 @@ begin
 		osd_play_stop_toggleD <= osd_play_stop_toggle;
 		if osd_play_stop_toggleD = '0' and osd_play_stop_toggle = '1' then
 			sense <= not sense;
+		end if;
+		if osd_play_stop_reset = '1' then
+			sense <= '1';
 		end if;
 
 		-- detect EAR input
