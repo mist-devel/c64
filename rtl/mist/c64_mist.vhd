@@ -186,25 +186,30 @@ constant CONF_STR : string :=
 	SEP&
 	"TH,Play/Stop TAP;"&
 	SEP&
-	"P1,Video & Audio;"&
-	"P2,System;"&
-	"P1O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
-	"P1O2,Video standard,PAL,NTSC;"&
-	"P1OUV,VIC-II variant,656x,856x,early 856x;"&
-	"P1OI,Tape sound,Off,On;"&
-	"P1OJ,Tape progress,Off,On;"&
-	"P1ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
-	"P1O6,Audio filter,On,Off;"&
-	"P1ONP,Midi,Off,Sequential Inc.,Passport/Sentech,DATEL/SIEL/JMS/C-LAB,Namesoft;"&
-	"P2O3,Joysticks,Normal,Swapped;"&
-	"P2OST,Mouse,Off,Port 1,Port 2;"&
-	"P2OW,Mouse Type,1351,Neos;"&
+	"P1,Profiles;"&
+	"P2,Video & Audio;"&
+	"P3,System;"&
+	"P1I,PAL Breadbin,0x00002000,0xc000e014;"&
+	"P1I,NTSC Breadbin,0x0002004,0xc000e014;"&
+	"P1I,PAL C64C,0x80006010,0xc000e014;"&
+	"P1I,NTSC C64C,0x80006014,0xc000e014;"&
+	"P2O89,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;"&
+	"P2O2,Video standard,PAL,NTSC;"&
+	"P2OUV,VIC-II variant,656x,856x,early 856x;"&
+	"P2OI,Tape sound,Off,On;"&
+	"P2OJ,Tape progress,Off,On;"&
+	"P2ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
+	"P2O6,Audio filter,On,Off;"&
+	"P2ONP,Midi,Off,Sequential Inc.,Passport/Sentech,DATEL/SIEL/JMS/C-LAB,Namesoft;"&
+	"P3O3,Joysticks,Normal,Swapped;"&
+	"P3OST,Mouse,Off,Port 1,Port 2;"&
+	"P3OW,Mouse Type,1351,Neos;"&
 	ST1541&
-	"P2OG,Disk Write,Enable,Disable;"&
-	"P2OQR,Userport,4-player IF,UART,UP9600;"&
-	"P2O4,CIA Model,6256,8521;"&
-	"P2OAB,Turbo,Off,Software Switchable,On;"&
-	"P2OKM,REU,Off,512K,1MB,2MB,4MB,8MB,16MB;"&
+	"P3OG,Disk Write,Enable,Disable;"&
+	"P3OQR,Userport,4-player IF,UART,UP9600;"&
+	"P3O4,CIA Model,6256,8521;"&
+	"P3OAB,Turbo,Off,Software Switchable,On;"&
+	"P3OKM,REU,Off,512K,1MB,2MB,4MB,8MB,16MB;"&
 	SEP&
 	"T1,Reset;"&
 	"T5,Reset & Detach Cartridge;"&
@@ -508,7 +513,7 @@ end component progressbar;
 	signal joyA_fire_o : std_logic;
 	signal joyB_fire_o : std_logic;
 
-	signal conf_str_addr : std_logic_vector(9 downto 0);
+	signal conf_str_addr : std_logic_vector(10 downto 0);
 	signal conf_str_char : std_logic_vector(7 downto 0);
 
 	signal status         : std_logic_vector(63 downto 0);
