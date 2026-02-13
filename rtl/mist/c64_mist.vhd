@@ -1467,18 +1467,15 @@ begin
 	          else x"00" when joyB_c64(6) = '1' else x"FF";
 
 	-- swap joysticks if requested
-	joyA_int <= joyA(6 downto 0) when st_swap_joystick = '0' else joyB(6 downto 0);
-	joyB_int <= joyB(6 downto 0) when st_swap_joystick = '0' else joyA(6 downto 0);
-
 	-- rearrange joystick contacts for c64
-	joyA_c64(6 downto 5) <= joyA_int(6 downto 5);
-	joyA_c64(4 downto 0) <= mouse_btns(0) & "000" & mouse_btns(1) when mouse1_en = '1' and st_mouse_neos = '0' else -- 1351
-	                        mouse_btns(0) & neos_data when mouse1_en = '1' else -- neos
-	                        joyA_int(4) & joyA_int(0) & joyA_int(1) & joyA_int(2) & joyA_int(3);
-	joyB_c64(6 downto 5) <= joyB_int(6 downto 5);
-	joyB_c64(4 downto 0) <= mouse_btns(0) & "000" & mouse_btns(1) when mouse2_en = '1' and st_mouse_neos = '0' else -- 1351
-	                        mouse_btns(0) & neos_data when mouse2_en = '1' else -- neos
-	                        joyB_int(4) & joyB_int(0) & joyB_int(1) & joyB_int(2) & joyB_int(3);
+	-- 1351 mode: OR mouse buttons with joystick (working logic)
+	-- NEOS mode: Replace directions with neos_data, keep button
+	joyA_int <= joyA(6 downto 5) & (joyA(4) or (mouse1_en and not st_mouse_neos and mouse_btns(0))) & joyA(0) & joyA(1) & joyA(2) & (joyA(3) or (mouse1_en and not st_mouse_neos and mouse_btns(1))) when st_mouse_neos = '0' or mouse1_en = '0' else
+	            joyA(6 downto 5) & mouse_btns(0) & neos_data; -- NEOS mode
+	joyB_int <= joyB(6 downto 5) & (joyB(4) or (mouse2_en and not st_mouse_neos and mouse_btns(0))) & joyB(0) & joyB(1) & joyB(2) & (joyB(3) or (mouse2_en and not st_mouse_neos and mouse_btns(1))) when st_mouse_neos = '0' or mouse2_en = '0' else
+	            joyB(6 downto 5) & mouse_btns(0) & neos_data; -- NEOS mode
+	joyA_c64 <= joyB_int when st_swap_joystick='1' else joyA_int;
+	joyB_c64 <= joyA_int when st_swap_joystick='1' else joyB_int;
 
 	joyC_c64 <= joyC(6 downto 4) & joyC(0) & joyC(1) & joyC(2) & joyC(3);
 	joyD_c64 <= joyD(6 downto 4) & joyD(0) & joyD(1) & joyD(2) & joyD(3);
