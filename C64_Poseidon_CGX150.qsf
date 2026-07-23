@@ -45,7 +45,7 @@ set_global_assignment -name DEVICE EP4CGX150DF27I7
 set_global_assignment -name TOP_LEVEL_ENTITY c64_mist_top
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 17.1.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:13:46  JANUARY 01, 2024"
-set_global_assignment -name LAST_QUARTUS_VERSION "22.1std.2 Lite Edition"
+set_global_assignment -name LAST_QUARTUS_VERSION "23.1std.1 Lite Edition"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
 set_global_assignment -name IGNORE_CLOCK_SETTINGS ON
