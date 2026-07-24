@@ -116,8 +116,16 @@ entity fpga64_sid_iec is
 		still       : out unsigned(15 downto 0);
 		audio_data_l: out std_logic_vector(17 downto 0);
 		audio_data_r: out std_logic_vector(17 downto 0);
-		extfilter_en: in  std_logic;
+		sid_filter  : in  std_logic_vector(1 downto 0);
 		sid_mode    : in  std_logic_vector(2 downto 0);
+		sid_cfg     : in  std_logic_vector(3 downto 0);
+		sid_fc_off_l: in  std_logic_vector(12 downto 0);
+		sid_fc_off_r: in  std_logic_vector(12 downto 0);
+		sid_ld_clk  : in  std_logic;
+		sid_ld_addr : in  std_logic_vector(11 downto 0);
+		sid_ld_data : in  std_logic_vector(15 downto 0);
+		sid_ld_wr   : in  std_logic;
+		sid_digifix : in  std_logic;
 
 		-- IEC
 		iec_data_o	: out std_logic;
@@ -225,10 +233,6 @@ architecture rtl of fpga64_sid_iec is
 	
 	-- SID signals
 	signal sid_do : std_logic_vector(7 downto 0);
-	signal sid_do6581 : std_logic_vector(7 downto 0);
-	signal sid_do8580_l : std_logic_vector(7 downto 0);
-	signal sid_do8580_r : std_logic_vector(7 downto 0);
-	signal second_sid_en: std_logic;
 
 	-- CIA signals
 	signal enableCia_p : std_logic;
@@ -306,29 +310,52 @@ architecture rtl of fpga64_sid_iec is
 	signal cd4066_sigD  : std_logic_vector(7 downto 0);
 
 	signal clk_1MHz     : std_logic_vector(31 downto 0);
-	signal voice_l      : signed(17 downto 0);
-	signal voice_r      : signed(17 downto 0);
+	signal sid_do_new   : std_logic_vector(7 downto 0);
+	signal sid_ver      : std_logic_vector(1 downto 0);
+	signal audio_new_l  : std_logic_vector(17 downto 0);
+	signal audio_new_r  : std_logic_vector(17 downto 0);
 	signal pot_x        : std_logic_vector(7 downto 0);
 	signal pot_y        : std_logic_vector(7 downto 0);
-	signal audio_8580_l : std_logic_vector(15 downto 0);
-	signal audio_8580_r : std_logic_vector(15 downto 0);
-
-	component sid8580
+	signal sid_sel_l    : std_logic;
+	signal sid_ext_in_l : std_logic_vector(17 downto 0);
+	signal sid_ext_in_r : std_logic_vector(17 downto 0);
+	signal sid_sel_r    : std_logic;
+	component sid_top_wrap
 		port (
-			reset    : in std_logic;
-			cs       : in std_logic;
-			clk32    : in std_logic;
-			clk_1MHz : in std_logic;
-			we       : in std_logic;
-			addr     : in std_logic_vector(4 downto 0);
-			data_in  : in std_logic_vector(7 downto 0);
-			data_out : out std_logic_vector(7 downto 0);
-			pot_x    : in std_logic_vector(7 downto 0);
-			pot_y    : in std_logic_vector(7 downto 0);
-			audio_data   : out std_logic_vector(15 downto 0);
-			extfilter_en : in std_logic
-	  );
-	end component sid8580;
+			reset       : in  std_logic;
+			clk         : in  std_logic;
+			ce_1m       : in  std_logic;
+
+			cs          : in  std_logic_vector(1 downto 0);
+			we          : in  std_logic;
+			addr        : in  std_logic_vector(4 downto 0);
+			data_in     : in  std_logic_vector(7 downto 0);
+			data_out    : out std_logic_vector(7 downto 0);
+
+			fc_offset_l : in  std_logic_vector(12 downto 0);
+			pot_x_l     : in  std_logic_vector(7 downto 0);
+			pot_y_l     : in  std_logic_vector(7 downto 0);
+			ext_in_l    : in  std_logic_vector(17 downto 0);
+			audio_l     : out std_logic_vector(17 downto 0);
+
+			fc_offset_r : in  std_logic_vector(12 downto 0);
+			pot_x_r     : in  std_logic_vector(7 downto 0);
+			pot_y_r     : in  std_logic_vector(7 downto 0);
+			ext_in_r    : in  std_logic_vector(17 downto 0);
+			audio_r     : out std_logic_vector(17 downto 0);
+
+			filter_en   : in  std_logic_vector(1 downto 0);
+			mode        : in  std_logic_vector(1 downto 0);
+			cfg         : in  std_logic_vector(3 downto 0);
+
+			ld_clk      : in  std_logic;
+			ld_addr     : in  std_logic_vector(11 downto 0);
+			ld_data     : in  std_logic_vector(15 downto 0);
+			ld_wr       : in  std_logic
+		);
+	end component;
+
+	signal enableSid    : std_logic;
 
 begin
 -- -----------------------------------------------------------------------
@@ -654,27 +681,19 @@ begin
 -- -----------------------------------------------------------------------
 -- SID
 -- -----------------------------------------------------------------------
-div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
-	begin									
-		if (rising_edge(clk32)) then			    			
-			if (reset = '1') then				
-				clk_1MHz 	<= "00000000000000000000000000000001";
+div1m: process(clk32)          -- this process divides 32 MHz to 1MHz (ce pulse for the SID)
+	begin
+		if (rising_edge(clk32)) then
+			if (reset = '1') then
+				clk_1MHz <= "00000000000000000000000000000001";
+				enableSid <= '0';
 			else
 				clk_1MHz(31 downto 1) <= clk_1MHz(30 downto 0);
 				clk_1MHz(0)           <= clk_1MHz(31);
+				enableSid <= clk_1MHz(31);
 			end if;
 		end if;
 	end process;
-
-	audio_data_l <= std_logic_vector(voice_l) when sid_mode(1)='0' else
-	                (audio_8580_l & "00");
-	audio_data_r <= std_logic_vector(voice_l) when sid_mode="000" else
-	                std_logic_vector(voice_r) when sid_mode="001" else
-	                (audio_8580_r & "00")     when sid_mode="011" else
-	                (audio_8580_l & "00");
-	sid_do <= sid_do6581 when sid_mode(1)='0' else
-	          sid_do8580_l when second_sid_en='0' else
-	          sid_do8580_r;
 
 	-- CD4066 analogue switch
 	cd4066_sigA <= x"FF" when cia1_pao(7) = '0' else potB_x;
@@ -685,69 +704,60 @@ div1m: process(clk32)				-- this process devides 32 MHz to 1MHz (for the SID)
 	pot_x <= cd4066_sigA and cd4066_sigC;
 	pot_y <= cd4066_sigB and cd4066_sigD;
 
-	second_sid_en <= '0' when sid_mode(0) = '0' else
-	                 '1' when busAddr(11 downto 8) = x"4" and busAddr(5) = '1' else -- D420
-	                 '1' when busAddr(11 downto 8) = x"5" else -- D500
-	                 '1' when ext_sid_cs = '1' else
-	                 '0';
+	-- sid_ver: chip model per channel (0=6581, 1=8580)
+	-- sid_mode: 000=6581 Mono, 001=6581 Stereo, 010=8580 Mono,
+	--           011=8580 Stereo, 100=Pseudo Stereo (6581L/8580R)
+	sid_ver(0) <= sid_mode(1);                              -- left  chip: 8580 if mode(1)=1
+	sid_ver(1) <= sid_mode(1) or sid_mode(2);              -- right chip: 8580 if mode>=010, or pseudo stereo
 
-	sid_6581: entity work.sid_top
-	generic map (
-		g_num_voices => 11
-	)
+	-- Left SID: always receives writes to $D400-$D41F
+	sid_sel_l <= cs_sid and not busAddr(5);
+
+	-- Right SID: D420-D43F in stereo modes, OR cartridge ext SID chip-select
+	sid_sel_r <= (cs_sid and busAddr(5) and sid_mode(0)) or ext_sid_cs;
+
+	sid_do <= sid_do_new;
+	audio_data_l <= audio_new_l;
+	-- In mono modes (sid_mode(0)=0) mirror left to right; in stereo use right SID
+	audio_data_r <= audio_new_l when sid_mode(0) = '0' else audio_new_r;
+
+	sid_ext_in_l <= (not sid_ver(0) and sid_digifix) & "00000000000000000"; -- digifix active for 6581 (sid_ver=0)
+	sid_ext_in_r <= (not sid_ver(1) and sid_digifix) & "00000000000000000"; -- digifix active for 6581 (sid_ver=0)
+
+	sid_new : sid_top_wrap
 	port map (
-		clock => clk32,
-		reset => reset,
+		reset       => reset,
+		clk         => clk32,
+		ce_1m       => enableSid,
 
-		addr => second_sid_en & "00" & busAddr(4 downto 0),
-		wren => pulseWrRam and phi0_cpu and (cs_sid or ext_sid_cs),
-		wdata => std_logic_vector(busDo),
-		rdata => sid_do6581,
+		cs          => sid_sel_r & sid_sel_l,
+		we          => pulseWrRam and phi0_cpu,
+		addr        => std_logic_vector(busAddr(4 downto 0)),
+		data_in     => std_logic_vector(busDo),
+		data_out    => sid_do_new,
 
-		potx => pot_x,
-		poty => pot_y,
+		pot_x_l     => pot_x,
+		pot_y_l     => pot_y,
+		ext_in_l    => sid_ext_in_l,
+		audio_l     => audio_new_l,
 
-		comb_wave_l => '0',
-		comb_wave_r => '0',
+		pot_x_r     => pot_x,
+		pot_y_r     => pot_y,
+		ext_in_r    => sid_ext_in_r,
+		audio_r     => audio_new_r,
 
-		extfilter_en => extfilter_en,
+		filter_en   => sid_filter,
+		mode        => sid_ver,
+		cfg         => sid_cfg,
 
-		start_iter => clk_1MHz(31),
-		sample_left => voice_l,
-		sample_right => voice_r
+		fc_offset_l => sid_fc_off_l,
+		fc_offset_r => sid_fc_off_r,
+
+		ld_clk      => sid_ld_clk,
+		ld_addr     => sid_ld_addr,
+		ld_data     => sid_ld_data,
+		ld_wr       => sid_ld_wr
 	);
-
-	sid_8580_l : sid8580
-	port map (
-		reset => reset,
-		clk32 => clk32,
-		clk_1MHz => clk_1MHz(31),
-		cs => cs_sid and not second_sid_en,
-		we => pulseWrRam and phi0_cpu,
-		addr => std_logic_vector(busAddr(4 downto 0)),
-		data_in => std_logic_vector(busDo),
-		data_out => sid_do8580_l,
-		pot_x => pot_x,
-		pot_y => pot_y,
-		audio_data => audio_8580_l,
-		extfilter_en => extfilter_en
-	);
-
-	sid_8580_r : sid8580
-	port map (
-		reset => reset,
-		clk32 => clk32,
-		clk_1MHz => clk_1MHz(31),
-		cs => (cs_sid or ext_sid_cs) and second_sid_en,
-		we => pulseWrRam and phi0_cpu,
-		addr => std_logic_vector(busAddr(4 downto 0)),
-		data_in => std_logic_vector(busDo),
-		data_out => sid_do8580_r,
-		pot_x => pot_x,
-		pot_y => pot_y,
-		audio_data => audio_8580_r,
-		extfilter_en => extfilter_en
-);
 
 -- -----------------------------------------------------------------------
 -- CIAs
