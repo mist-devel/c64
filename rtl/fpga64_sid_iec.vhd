@@ -110,6 +110,7 @@ entity fpga64_sid_iec is
 		serioclk    : out std_logic;
 		ces         : out std_logic_vector(3 downto 0);
 
+		palette     : in  unsigned(2 downto 0);
 		--Connector to the SID
 		SIDclk      : buffer std_logic;
 		still       : out unsigned(15 downto 0);
@@ -457,6 +458,7 @@ begin
 
 	c64colors: entity work.fpga64_rgbcolor
 		port map (
+			palette => palette,
 			index => vicColorIndex,
 			r => r,
 			g => g,

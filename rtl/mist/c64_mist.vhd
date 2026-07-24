@@ -200,6 +200,7 @@ constant CONF_STR : string :=
 	"P2OJ,Tape progress,Off,On;"&
 	"P2ODF,SID,6581 Mono,6581 Stereo,8580 Mono,8580 Stereo,Pseudo Stereo;"&
 	"P2O6,Audio filter,On,Off;"&
+	"P2OXZ,Palette,Colodore,Ultimate,Pepto-PAL,Vice,Vice6569R1,Vice6569R5,Vice8565R2,Lemon64;"&
 	"P2ONP,Midi,Off,Sequential Inc.,Passport/Sentech,DATEL/SIEL/JMS/C-LAB,Namesoft;"&
 	"P3O3,Joysticks,Normal,Swapped;"&
 	"P3OST,Mouse,Off,Port 1,Port 2;"&
@@ -535,6 +536,7 @@ end component progressbar;
 	signal st_turbo            : std_logic_vector(1 downto 0); -- status(11 downto 10)
 	signal st_scandoubler_fx   : std_logic_vector(1 downto 0); -- status(9 downto 8)
 	signal st_audio_filter_off : std_logic;                    -- status(6)
+	signal st_palette          : unsigned(2 downto 0);            -- status(34 downto 32)
 	signal st_detach_cartdrige : std_logic;                    -- status(5)
 	signal st_cia_mode         : std_logic;                    -- status(4)
 	signal st_swap_joystick    : std_logic;                    -- status(3)
@@ -794,6 +796,7 @@ begin
 	st_turbo            <= status(11 downto 10);
 	st_scandoubler_fx   <= status(9 downto 8);
 	st_audio_filter_off <= status(6);
+	st_palette          <= unsigned(status(34 downto 32));
 	st_detach_cartdrige <= status(5);
 	st_cia_mode         <= status(4);
 	st_swap_joystick    <= status(3);
@@ -1420,6 +1423,7 @@ begin
 		still => open,
 		idle0 => idle0, -- first set of idle cycles
 		idle => idle, -- second set of idle cycles (for refresh)
+		palette      => st_palette,
 		audio_data_l => audio_data_l,
 		audio_data_r => audio_data_r,
 		extfilter_en => not st_audio_filter_off,
