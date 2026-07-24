@@ -183,7 +183,7 @@ always @(posedge clock) begin
 
 	if(ce_1m) begin
 		if(control[7:4]) begin
-			keep_cnt <= mode ? WF_0_TTL_6581 : WF_0_TTL_8580;
+			keep_cnt <= mode ? WF_0_TTL_8580 : WF_0_TTL_6581;
 			dac_out  <= $signed({1'b0, norm_dac | {comb, 4'b0}}) - $signed(mode ? WAVEFORM_DC_8580 : WAVEFORM_DC_6581);
 		end
 		else if(keep_cnt) keep_cnt <= keep_cnt - 1'd1;
