@@ -48,11 +48,12 @@ port(
 	iec_clk_o  : out std_logic;
 	
 	sd_lba         : out std_logic_vector(31 downto 0);
+	sd_cnt         : out std_logic_vector(7 downto 0);
 	sd_rd          : out std_logic;
 	sd_wr          : out std_logic;
 	sd_ack         : in  std_logic;
 
-	sd_buff_addr   : in  std_logic_vector(8 downto 0);
+	sd_buff_addr   : in  std_logic_vector(16 downto 0);
 	sd_buff_dout   : in  std_logic_vector(7 downto 0);
 	sd_buff_din    : out std_logic_vector(7 downto 0);
 	sd_buff_wr     : in std_logic;
@@ -118,11 +119,12 @@ signal dbg_adr_fetch : std_logic_vector(15 downto 0);
 component mist_sd_card port
 	(
 		sd_lba         : out std_logic_vector(31 downto 0);
+		sd_cnt         : out std_logic_vector(7 downto 0);
 		sd_rd          : out std_logic;
 		sd_wr          : out std_logic;
 		sd_ack         : in  std_logic;
 
-		sd_buff_addr   : in  std_logic_vector(8 downto 0);
+		sd_buff_addr   : in  std_logic_vector(16 downto 0);
 		sd_buff_dout   : in  std_logic_vector(7 downto 0);
 		sd_buff_din    : out std_logic_vector(7 downto 0);
 		sd_buff_wr     : in  std_logic;
@@ -260,6 +262,7 @@ port map
 	sd_buff_wr   => sd_buff_wr,
 
 	sd_lba  => sd_lba,
+	sd_cnt  => sd_cnt,
 	sd_rd   => sd_rd,
 	sd_wr   => sd_wr,
 	sd_ack => sd_ack

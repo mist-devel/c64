@@ -545,13 +545,14 @@ end component progressbar;
 	signal st_reset            : std_logic;                    -- status(0)
 
 	signal sd_lba         : std_logic_vector(31 downto 0);
+	signal sd_cnt         : std_logic_vector(7 downto 0);
 	signal sd_rd          : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_wr          : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_ack_x       : std_logic_vector(DRIVE_N-1 downto 0);
 	signal sd_ack_conf    : std_logic;
 	signal sd_conf        : std_logic;
 	signal sd_sdhc        : std_logic;
-	signal sd_buff_addr   : std_logic_vector(8 downto 0);
+	signal sd_buff_addr   : std_logic_vector(16 downto 0);
 	signal sd_buff_dout   : std_logic_vector(7 downto 0);
 	signal sd_buff_din    : std_logic_vector(7 downto 0);
 	signal sd_buff_wr     : std_logic;
@@ -758,6 +759,7 @@ begin
 		i2c_ack => i2c_ack,
 
 		sd_lba => sd_lba,
+		sd_cnt => sd_cnt,
 		sd_rd => sd_rd,
 		sd_wr => sd_wr,
 		sd_ack_x => sd_ack_x,
@@ -1657,6 +1659,8 @@ begin
 		signal c64_iec_clk_i_r2   : std_logic;
 		type sd_lba_t is array (0 to DRIVE_N-1) of std_logic_vector(31 downto 0);
 		signal sd_lbas            : sd_lba_t;
+		type sd_cnt_t is array (0 to DRIVE_N-1) of std_logic_vector(7 downto 0);
+		signal sd_cnts            : sd_cnt_t;
 		type sd_buff_din_t is array (0 to DRIVE_N-1) of std_logic_vector(7 downto 0);
 		signal sd_buff_dins       : sd_buff_din_t;
 		signal led_disk           : std_logic_vector(DRIVE_N-1 downto 0);
@@ -1684,7 +1688,7 @@ begin
 	end process;
 
 	-- muxes
-	process(c1541_iec_clk_o, c1541_iec_data_o, sd_rd, sd_wr, sd_lbas, sd_buff_dins, sd_ack_x, led_disk)
+	process(c1541_iec_clk_o, c1541_iec_data_o, sd_rd, sd_wr, sd_lbas, sd_cnts, sd_buff_dins, sd_ack_x, led_disk)
 		variable iec_data_o: std_logic;
 		variable iec_clk_o: std_logic;
 		variable leds: std_logic;
@@ -1694,9 +1698,11 @@ begin
 		leds := '0';
 		sd_buff_din <= (others => '0');
 		sd_lba <= (others => '0');
+		sd_cnt <= (others => '0');
 		for i in 0 to DRIVE_N-1 loop
 			if sd_rd(i) = '1' or sd_wr(i) = '1' then
 				sd_lba <= sd_lbas(i);
+				sd_cnt <= sd_cnts(i);
 			end if;
 			if sd_ack_x(i) = '1' then
 				sd_buff_din <= sd_buff_dins(i);
@@ -1741,6 +1747,7 @@ begin
 		iec_clk_o  => c1541_iec_clk_o(i),
 
 		sd_lba => sd_lbas(i),
+		sd_cnt => sd_cnts(i),
 		sd_rd  => sd_rd(i),
 		sd_wr  => sd_wr(i),
 		sd_ack => sd_ack_x(i),
