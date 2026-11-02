@@ -162,8 +162,8 @@ function ST1541 return string is
 variable s: string(1 to DRIVE_N*47);
 begin
 	for i in 0 to DRIVE_N-1 loop
-		--P2Oab(cd,ef,gh)...
-		s(i*47+1 to i*47+47):="P2O"&character'val(i*2+97)&character'val(i*2+98)&",Drive "&character'val(i+48)&",Enable,Enable if mounted,Disable;";
+		--P3Oab(cd,ef,gh)...
+		s(i*47+1 to i*47+47):="P3O"&character'val(i*2+97)&character'val(i*2+98)&",Drive "&character'val(i+48)&",Enable,Enable if mounted,Disable;";
 	end loop;
 	return s;
 end function;
